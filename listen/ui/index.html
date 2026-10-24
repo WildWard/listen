@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WildWard Listen</title>
+<style>
+/* offline tool: system fonts only, nothing loaded from the internet */
+:root { --night:#0a1510; --card:#0f1f18; --line:#1f3a2d; --wing:#e9a04b; --leaf:#8fbf7a; --bone:#eef0ea; --fog:#9fb0a6; --sky:#7fb3c8; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--night); color: var(--bone); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
+button, input, select { font: inherit; }
+:focus-visible { outline: 2px solid var(--wing); outline-offset: 2px; }
+header { position: sticky; top: 0; z-index: 5; background: rgba(10,21,16,.96); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.brand { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.brand span { color: var(--wing); }
+.folder { color: var(--fog); font: 12px ui-monospace, monospace; overflow-wrap: anywhere; }
+.stats { margin-left: auto; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.stats[hidden] { display: none; }
+.stat b { font-size: 1.15rem; color: var(--leaf); }
+.btn { background: var(--wing); color: #12201a; border: 0; border-radius: 99px; padding: 9px 16px; font-weight: 700; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--bone); border: 1.5px solid var(--line); }
+.btn:disabled { opacity: .5; cursor: default; }
+.bar { height: 6px; width: 140px; background: var(--line); border-radius: 9px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--leaf); }
+main { padding: 20px 24px 80px; max-width: 1400px; margin: 0 auto; }
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.tabs button { background: var(--card); color: var(--fog); border: 1px solid var(--line); border-radius: 99px; padding: 7px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { color: var(--bone); border-color: var(--leaf); }
+.hint { color: var(--fog); margin: 0 0 18px; max-width: 75ch; }
+.cluster { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+.cluster.done { border-color: rgba(143,191,122,.45); }
+.chead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+.chead h2 { margin: 0; font-size: 1.05rem; }
+.meta { color: var(--fog); font-size: .9rem; }
+.sound { color: var(--sky); font-size: .9rem; margin: 0 0 12px; }
+.tag { border-radius: 99px; padding: 2px 10px; font-size: .85rem; }
+.tag.ok { background: rgba(143,191,122,.15); color: var(--leaf); }
+.tag.sug { background: rgba(233,160,75,.13); color: var(--wing); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.pass { position: relative; background: #0b1812; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.pass.off { opacity: .35; }
+.pass img { display: block; width: 100%; height: 86px; object-fit: cover; cursor: pointer; }
+.pinfo { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 8px; font: 11px/1.3 ui-monospace, monospace; color: var(--fog); }
+.pinfo .lab { color: var(--leaf); font: italic 12px system-ui, sans-serif; }
+.pinfo .sg { color: var(--wing); font: italic 12px system-ui, sans-serif; }
+.play { background: none; border: 1px solid var(--line); color: var(--bone); border-radius: 99px; width: 28px; height: 28px; cursor: pointer; flex: none; }
+.pick { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: var(--wing); }
+.labelrow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+.labelrow input[type=text] { flex: 1 1 260px; background: #0b1812; color: var(--bone); border: 1px solid var(--line); border-radius: 99px; padding: 9px 14px; }
+.more { background: none; border: 0; color: var(--fog); text-decoration: underline; cursor: pointer; padding: 0; }
+.empty { color: var(--fog); padding: 40px 0; text-align: center; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.panel h2 { margin: 0 0 4px; font-size: 1.1rem; }
+.start { max-width: 640px; margin: 60px auto; }
+.start label { display: block; color: var(--fog); margin: 14px 0 6px; }
+.start input[type=text], .start select { width: 100%; background: #0b1812; color: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.log { font: 12px/1.6 ui-monospace, monospace; color: var(--fog); background: #0b1812; border-radius: 10px; padding: 12px; margin-top: 16px; white-space: pre-wrap; min-height: 3em; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--fog); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+table.sum { border-collapse: collapse; width: 100%; font-size: .92rem; }
+table.sum td, table.sum th { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; }
+#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card); border: 1px solid var(--leaf); border-radius: 12px; padding: 10px 16px; display: none; max-width: 90vw; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Wild<span>Ward</span> Listen</div>
+  <div class="folder" id="folder"></div>
+  <div class="stats" id="stats" hidden>
+    <span class="stat"><b id="nPasses">0</b> passes</span>
+    <span class="stat"><b id="nReviewed">0</b> reviewed</span>
+    <span class="bar" title="Share of passes reviewed"><i id="progress" style="width:0"></i></span>
+    <button class="btn ghost" id="openOther">Open another survey</button>
+    <button class="btn" id="export">Export</button>
+  </div>
+</header>
+<main id="main"></main>
+<datalist id="species"></datalist>
+<div id="toast" role="status"></div>
+<audio id="player"></audio>
+<script>
+const $ = s => document.querySelector(s);
+let survey = null, view = "todo", poller = null;
+const expanded = new Set(), unpicked = new Set();
+const COLORS = ["#8fbf7a", "#e9a04b", "#7fb3c8", "#d98ab5", "#c9c36a", "#9a8fd9", "#e07a5f", "#5fbfa8"];
+
+async function boot() {
+  const st = await (await fetch("/api/status")).json();
+  if (st.state === "ready") return loadSurvey();
+  if (st.state === "scanning") return showScanning();
+  showStart(st);
+}
+
+function showStart(st = {}) {
+  $("#stats").hidden = true; $("#folder").textContent = "";
+  $("#main").innerHTML = `<section class="panel start">
+    <h2>Open a survey</h2>
+    <p class="hint">Point WildWard Listen at a folder of bat-detector recordings (WAV). It finds every bat pass, groups similar calls and measures them, all on this computer. Results are saved inside the folder, so you can close the app any time.</p>
+    <label for="f">Folder with recordings</label>
+    <input id="f" type="text" placeholder="e.g. D:\\Surveys\\Taman Negara night 1" value="${esc(st.folder || "")}">
+    <label for="te">How were the files recorded?</label>
+    <select id="te">
+      <option value="1">Real time (full-spectrum, 192 kHz or higher)</option>
+      <option value="10">Time-expanded 10x</option>
+      <option value="16">Time-expanded 16x</option>
+    </select>
+    <label><input type="checkbox" id="rescan"> Scan again even if results already exist</label>
+    <p style="margin-top:18px"><button class="btn" id="go">Scan recordings</button></p>
+    ${st.state === "error" ? `<div class="log">${esc((st.log || []).join("\n"))}</div>` : ""}
+  </section>`;
+  $("#go").onclick = async () => {
+    const r = await fetch("/api/open", { method: "POST", body: JSON.stringify({ folder: $("#f").value.trim(), te: +$("#te").value, rescan: $("#rescan").checked }) });
+    const j = await r.json();
+    if (j.error) return toast(j.error);
+    boot();
+  };
+}
+
+function showScanning() {
+  $("#stats").hidden = true;
+  $("#main").innerHTML = `<section class="panel start"><h2>Listening…</h2>
+    <p class="hint">Finding bat passes, measuring calls and comparing sounds. The first scan of a big folder can take a while on a laptop. You can leave this page open.</p>
+    <div class="log" id="log"></div></section>`;
+  clearInterval(poller);
+  poller = setInterval(async () => {
+    const st = await (await fetch("/api/status")).json();
+    if ($("#log")) $("#log").textContent = st.log.join("\n");
+    if (st.state !== "scanning") { clearInterval(poller); boot(); }
+  }, 1200);
+}
+
+async function loadSurvey() {
+  survey = await (await fetch("/api/survey")).json();
+  $("#stats").hidden = false;
+  render();
+}
+
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 4500); }
+
+function render() {
+  const P = survey.passes, reviewed = P.filter(p => p.label).length;
+  $("#folder").textContent = survey.folder;
+  $("#nPasses").textContent = P.length.toLocaleString();
+  $("#nReviewed").textContent = reviewed.toLocaleString();
+  $("#progress").style.width = (P.length ? 100 * reviewed / P.length : 0) + "%";
+  $("#species").innerHTML = [...new Set(P.map(p => p.label).filter(Boolean))].sort().map(l => `<option value="${esc(l)}">`).join("");
+  const tabs = [["todo", "To review"], ["all", "All groups"], ["done", "Reviewed"], ["night", "Night activity"]];
+  let body = `<div class="tabs" role="group" aria-label="View">${tabs.map(([k, l]) => `<button data-view="${k}" aria-pressed="${view === k}">${l}</button>`).join("")}</div>`;
+  if (view === "night") { $("#main").innerHTML = body + nightHtml(); return; }
+  body += `<p class="hint">Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once. ${view === "todo" ? "Groups are ordered so the ones that teach WildWard the most come first." : ""} After two species are labelled, WildWard points each remaining group to the closest species you've labelled. Confidence scores appear once five species are labelled.</p>`;
+  let groups = survey.clusters.filter(c => {
+    const done = c.passes.every(i => P[i].label);
+    return view === "all" || (view === "done" ? done : !done);
+  });
+  if (view === "todo") groups = [...groups].sort((a, b) => b.priority - a.priority);
+  if (!P.length) body += `<p class="empty">No bat passes found in this folder${survey.skipped.length ? ` (${survey.skipped.length} files skipped: ${esc(survey.skipped[0].reason)})` : ""}.</p>`;
+  else if (!groups.length) body += `<p class="empty">${view === "todo" ? "Everything is reviewed. Export the results when you're ready." : "Nothing here yet."}</p>`;
+  else body += groups.map(groupHtml).join("");
+  $("#main").innerHTML = body;
+}
+
+function groupHtml(c) {
+  const P = survey.passes, ps = c.passes.map(i => P[i]);
+  const done = ps.every(p => p.label);
+  const lab = topKey(c.labels), sug = topKey(c.suggestions), snd = topKey(c.sounds);
+  const conf = sug ? mean(ps.filter(p => !p.label && p.suggestion === sug).map(p => p.confidence)) : 0;
+  const ms = ps.map(p => p.measures).filter(m => m && m.f_char_khz);
+  const fc = median(ms.map(m => m.f_char_khz)), dur = median(ms.map(m => m.duration_ms));
+  const shown = expanded.has(c.id) ? ps : ps.slice(0, 8);
+  return `<section class="cluster ${done ? "done" : ""}" aria-label="Group ${c.id + 1}">
+    <div class="chead"><h2>Group ${c.id + 1}</h2>
+      <span class="meta">${ps.length} passes${ms.length ? ` · calls around ${fc.toFixed(1)} kHz, ${dur.toFixed(1)} ms` : ""}</span>
+      ${lab ? `<span class="tag ok">${esc(lab)}</span>` : ""}
+      ${sug && !done ? sugTag(sug, conf) : ""}
+    </div>
+    ${snd ? `<p class="sound">Sound type: ${esc(snd)}</p>` : ""}
+    <div class="grid">${shown.map(passHtml).join("")}</div>
+    ${ps.length > 8 ? `<p><button class="more" data-more="${c.id}">${expanded.has(c.id) ? "Show fewer" : `Show all ${ps.length} passes`}</button></p>` : ""}
+    <div class="labelrow">
+      <input type="text" list="species" placeholder="Species or genus, e.g. Hipposideros larvatus" aria-label="Label for group ${c.id + 1}" data-input="${c.id}" value="${esc(lab || "")}">
+      <button class="btn" data-label="${c.id}">Label ticked passes</button>
+      ${done ? `<button class="btn ghost" data-clear="${c.id}">Clear labels</button>` : ""}
+    </div></section>`;
+}
+
+function sugTag(sug, conf) {
+  // with only a few labelled species every call gets forced into one of them, so a percentage would be fake
+  const n = new Set(survey.passes.map(p => p.label).filter(Boolean)).size;
+  return n < 5
+    ? `<span class="tag sug" title="The model can only pick between species you have labelled">closest of your ${n} labelled species: ${esc(sug)}</span>`
+    : `<span class="tag sug" title="Model suggestion, not reviewed">suggested: ${esc(sug)} · ${(conf * 100).toFixed(0)}%</span>`;
+}
+
+function passHtml(p) {
+  const off = unpicked.has(p.id);
+  const who = p.label ? `<span class="lab">${esc(p.label)}</span>` : p.suggestion ? `<span class="sg">${esc(p.suggestion)}?</span>` : "";
+  const m = p.measures || {};
+  return `<div class="pass ${off ? "off" : ""}">
+    <input class="pick" type="checkbox" ${off ? "" : "checked"} data-pick="${p.id}" aria-label="Include pass ${p.id}">
+    <img src="/media/${p.id}.png" alt="Spectrogram of pass ${p.id}" data-play="${p.id}" loading="lazy">
+    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""} ${who}</span>
+      <button class="play" data-play="${p.id}" aria-label="Play pass ${p.id}, slowed down 10x">▶</button></div></div>`;
+}
+
+function nightHtml() {
+  const act = survey.activity || {}, hours = Object.keys(act).map(Number);
+  if (!hours.length) return `<p class="empty">No recording times found. Times are read from file names like 20261024_213000.wav.</p>`;
+  // order hours from noon to noon so a night reads left to right
+  const used = [...Array(24).keys()].map(h => (h + 12) % 24).filter(h => act[h]);
+  const groups = [...new Set(Object.values(act).flatMap(o => Object.keys(o)))];
+  const col = g => COLORS[groups.indexOf(g) % COLORS.length];
+  const max = Math.max(...Object.values(act).map(o => Object.values(o).reduce((s, v) => s + v, 0)));
+  const W = 760, H = 220, bw = Math.max(14, Math.min(40, (W - 40) / Math.max(used.length, 1) - 6));
+  let x = 30, bars = "";
+  for (const h of used) {
+    let y = H - 24;
+    for (const g of groups) {
+      const v = (act[h] || {})[g] || 0; if (!v) continue;
+      const hh = (H - 40) * v / max; y -= hh;
+      bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>${String(h).padStart(2, "0")}:00 · ${esc(g)}: ${v}</title></rect>`;
+    }
+    bars += `<text x="${x + bw / 2}" y="${H - 8}" fill="#9fb0a6" font-size="11" text-anchor="middle">${String(h).padStart(2, "0")}h</text>`;
+    x += bw + 6;
+  }
+  const totals = groups.map(g => [g, Object.values(act).reduce((s, o) => s + (o[g] || 0), 0)]).sort((a, b) => b[1] - a[1]);
+  const src = (survey.time_source || []).join(", ");
+  return `<section class="panel"><h2>Bat activity through the night</h2>
+    <p class="hint">Passes per hour, coloured by your labels, or by sound type where nothing is labelled yet. Times from: ${esc(src || "unknown")}.</p>
+    <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Bat passes per hour">${bars}</svg>
+    <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(g)}</span>`).join("")}</div></section>
+    <section class="panel"><h2>Summary</h2><table class="sum"><tr><th>Group</th><th>Passes</th></tr>
+    ${totals.map(([g, n]) => `<tr><td>${esc(g)}</td><td>${n}</td></tr>`).join("")}</table></section>`;
+}
+
+document.addEventListener("click", async e => {
+  const t = e.target;
+  if (t.dataset.view) { view = t.dataset.view; render(); }
+  if (t.dataset.play) { const a = $("#player"); a.src = `/media/${t.dataset.play}.wav`; a.play(); }
+  if (t.dataset.more) { const id = +t.dataset.more; expanded.has(id) ? expanded.delete(id) : expanded.add(id); render(); }
+  if (t.dataset.pick) { const id = +t.dataset.pick; t.checked ? unpicked.delete(id) : unpicked.add(id); t.closest(".pass").classList.toggle("off", !t.checked); }
+  if (t.dataset.label || t.dataset.clear) {
+    const id = +(t.dataset.label || t.dataset.clear), c = survey.clusters.find(c => c.id === id);
+    const label = t.dataset.clear ? null : document.querySelector(`[data-input="${id}"]`).value.trim();
+    if (t.dataset.label && !label) { toast("Type a species or genus first."); return; }
+    const ids = c.passes.filter(i => !unpicked.has(i));
+    if (!ids.length) { toast("Tick at least one pass."); return; }
+    t.disabled = true;
+    survey = await (await fetch("/api/label", { method: "POST", body: JSON.stringify({ passes: ids, label }) })).json();
+    render(); toast(label ? `Labelled ${ids.length} passes as ${label}.` : `Cleared ${ids.length} labels.`);
+  }
+});
+$("#export").onclick = async () => {
+  await fetch("/api/export", { method: "POST" });
+  toast("Saved in the survey folder (.wildward): passes.csv, calls.csv and report.html");
+};
+$("#openOther").onclick = () => showStart({ folder: survey && survey.folder });
+
+const esc = s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+const topKey = o => Object.entries(o || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
+const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
+const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+const shortName = f => f.split(/[\\/]/).pop().slice(0, 18);
+boot();
+</script>
+</body>
+</html>
