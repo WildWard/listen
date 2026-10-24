@@ -14,9 +14,10 @@ import numpy as np
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
-from . import calls as callmod, detect, embed, media, timestamps
+from . import calls as callmod, detect, embed, media, reference as refmod, timestamps
 
 AUDIO_EXT = {".wav", ".WAV"}
 
@@ -31,6 +32,9 @@ class Survey:
         self.passes: list[dict] = []
         self.emb = np.zeros((0, 1536), np.float32)
         self.skipped: list[dict] = []
+        self.reference_path: str | None = None
+        self.reference_te = 1
+        self.reference: dict | None = None
         if self.state_path.exists():
             self._load()
 
@@ -40,11 +44,18 @@ class Survey:
         self.passes, self.skipped = s["passes"], s.get("skipped", [])
         self.time_expansion = s.get("time_expansion", self.time_expansion)
         self.emb = np.load(self.dir / "embeddings.npy")
+        self.reference_path, self.reference_te = s.get("reference_path"), s.get("reference_te", 1)
+        if self.reference_path and Path(self.reference_path).is_dir():
+            try:  # cached, so this is quick
+                self.reference = refmod.build(Path(self.reference_path), self.reference_te, progress=lambda m: None)
+            except Exception:
+                self.reference = None
 
     def save(self) -> None:
         self.dir.mkdir(exist_ok=True)
         self.state_path.write_text(json.dumps({"passes": self.passes, "skipped": self.skipped,
-                                               "time_expansion": self.time_expansion, "saved": time.time()},
+                                               "time_expansion": self.time_expansion, "reference_path": self.reference_path,
+                                               "reference_te": self.reference_te, "saved": time.time()},
                                               indent=1), encoding="utf8")
         np.save(self.dir / "embeddings.npy", self.emb)
 
@@ -120,22 +131,49 @@ class Survey:
         self.suggest()
         self.save()
 
+    def set_reference(self, library: Path | None, te: int = 1, progress=print) -> None:
+        """Learn species from a reference library (or forget it with None), then refresh suggestions."""
+        if library is None:
+            self.reference, self.reference_path = None, None
+        else:
+            library = Path(library).resolve()   # absolute, so the survey finds it again from anywhere
+            self.reference = refmod.build(library, te, progress=progress)
+            self.reference_path, self.reference_te = str(library), te
+        self.suggest()
+        self.save()
+
+    def known_species(self) -> list[str]:
+        ref = list(self.reference["species"]) if self.reference else []
+        return sorted(set(ref) | {p["label"] for p in self.passes if p["label"]})
+
     def suggest(self) -> None:
-        """Train on the expert's confirmed labels; suggest a species for everything else."""
+        """Train on the reference library plus the expert's confirmed labels; suggest a species for the rest.
+        Labels from this survey count three times as much as reference calls: they come from this site."""
         labelled = [p for p in self.passes if p["label"]]
-        classes = {p["label"] for p in labelled}
+        # features: Perch embedding plus the measured call parameters (weighted x3 so frequency counts)
+        own = np.hstack([self.emb, np.repeat(np.stack([callmod.feature_vector(p.get("measures") or {}) for p in self.passes]), 3, axis=1)])             if self.passes else np.zeros((0, 1536 + 21), np.float32)
+        X_parts, y_parts, w_parts = [], [], []
+        if self.reference is not None and "F" in self.reference:
+            X_parts.append(np.hstack([self.reference["X"], np.repeat(self.reference["F"], 3, axis=1)]))
+            y_parts.append(self.reference["y"]); w_parts.append(np.ones(len(self.reference["y"])))
+        if labelled:
+            idx = np.array([p["id"] for p in labelled])
+            X_parts.append(own[idx]); y_parts.append(np.array([p["label"] for p in labelled]))
+            w_parts.append(np.full(len(idx), 3.0))
         for p in self.passes:
             p["suggestion"], p["confidence"] = None, None
-        if len(classes) < 2:
+        if not X_parts:
             return
-        idx = np.array([p["id"] for p in labelled])
-        y = np.array([p["label"] for p in labelled])
-        clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, C=0.1, class_weight="balanced"))
-        clf.fit(self.emb[idx], y)
+        X, y, w = np.concatenate(X_parts), np.concatenate(y_parts), np.concatenate(w_parts)
+        if len(set(y)) < 2:
+            return
+        clf = make_pipeline(SimpleImputer(strategy="median", keep_empty_features=True), StandardScaler(),
+                            LogisticRegression(max_iter=4000, C=0.05, class_weight="balanced"))
+        clf.fit(X, y, logisticregression__sample_weight=w)
         todo = [p for p in self.passes if not p["label"]]
         if not todo:
             return
-        proba = clf.predict_proba(self.emb[[p["id"] for p in todo]])
+        proba = clf.predict_proba(own[[p["id"] for p in todo]])
         for p, pr in zip(todo, proba):
             k = int(pr.argmax())
             p["suggestion"], p["confidence"] = str(clf.classes_[k]), round(float(pr[k]), 3)
@@ -171,4 +209,7 @@ class Survey:
         return {"folder": str(self.folder), "time_expansion": self.time_expansion,
                 "passes": [{k: v for k, v in p.items() if k != "calls"} for p in self.passes],
                 "clusters": sorted(clusters.values(), key=lambda c: c["id"]), "skipped": self.skipped,
-                "activity": activity, "time_source": sorted(s for s in sources if s)}
+                "activity": activity, "time_source": sorted(s for s in sources if s),
+                "known_species": self.known_species(),
+                "reference": {"path": self.reference_path, "species": len(self.reference["species"]),
+                              "passes": int(len(self.reference["y"]))} if self.reference else None}

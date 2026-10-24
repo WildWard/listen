@@ -159,6 +159,17 @@ def sound_type(s: dict) -> dict:
     return {"type": f"downward sweep ending near {fc:.0f} kHz", "hint": "typical of vesper bats such as Myotis"}
 
 
+FEATURES = ["f_char_khz", "f_start_khz", "f_end_khz", "duration_ms", "bandwidth_khz", "slope_khz_ms"]
+
+
+def feature_vector(s: dict) -> np.ndarray:
+    """Measured call parameters as numbers for the classifier (NaN when a pass couldn't be measured).
+    Frequency is what separates many Asian bats, e.g. Rhinolophus affinis ~73 kHz vs Hipposideros larvatus ~91 kHz."""
+    v = [float(s.get(k, np.nan)) if s else np.nan for k in FEATURES]
+    v.append(1.0 if s and s.get("shape") in ("CF", "CF-FM") else 0.0)
+    return np.array(v, dtype=np.float32)
+
+
 def as_rows(calls: list[Call], main: list[Call] | None = None) -> list[dict]:
     keep = {id(c) for c in (main or [])}
     return [asdict(c) | {"main_bat": "yes" if id(c) in keep else "no"} for c in calls]

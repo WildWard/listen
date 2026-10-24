@@ -71,6 +71,7 @@ table.sum td, table.sum th { border-bottom: 1px solid var(--line); padding: 7px 
     <span class="stat"><b id="nPasses">0</b> passes</span>
     <span class="stat"><b id="nReviewed">0</b> reviewed</span>
     <span class="bar" title="Share of passes reviewed"><i id="progress" style="width:0"></i></span>
+    <button class="btn ghost" id="refBtn">Reference library</button>
     <button class="btn ghost" id="openOther">Open another survey</button>
     <button class="btn" id="export">Export</button>
   </div>
@@ -117,10 +118,35 @@ function showStart(st = {}) {
   };
 }
 
+function showReference() {
+  const r = survey.reference;
+  $("#main").innerHTML = `<section class="panel start">
+    <h2>Reference library</h2>
+    <p class="hint">Teach WildWard Listen the species you already know. Pick a folder with one sub-folder per species, named exactly as it should appear, for example <code>My calls&#92;Hipposideros larvatus&#92;*.wav</code>. WildWard learns them before you review anything, then suggests species for this survey with a confidence score. Your own labels from this survey always count more than the library.</p>
+    ${r ? `<p class="hint">Current library: <b>${esc(r.path)}</b>, ${r.species} species, ${r.passes} reference passes.</p>` : ""}
+    <label for="rf">Reference folder</label>
+    <input id="rf" type="text" placeholder="e.g. D:&#92;Bat calls&#92;Malaysia reference" value="${esc(r ? r.path : "")}">
+    <label for="rte">How were the reference files recorded?</label>
+    <select id="rte"><option value="1">Real time (192 kHz or higher)</option><option value="10">Time-expanded 10x</option><option value="16">Time-expanded 16x</option></select>
+    <p class="hint" style="margin-top:8px">Mixed formats? Put a file named te.txt containing 10 or 16 inside any species folder that is time-expanded.</p>
+    <p style="margin-top:18px"><button class="btn" id="learn">Learn species</button>
+      ${r ? `<button class="btn ghost" id="forget">Stop using this library</button>` : ""}
+      <button class="btn ghost" id="back">Back to review</button></p>
+  </section>`;
+  const go = async folder => {
+    const res = await (await fetch("/api/reference", { method: "POST", body: JSON.stringify({ folder, te: +$("#rte").value }) })).json();
+    if (res.error) return toast(res.error);
+    showScanning();
+  };
+  $("#learn").onclick = () => { const f = $("#rf").value.trim(); if (!f) return toast("Type the reference folder first."); go(f); };
+  if ($("#forget")) $("#forget").onclick = () => go("");
+  $("#back").onclick = render;
+}
+
 function showScanning() {
   $("#stats").hidden = true;
-  $("#main").innerHTML = `<section class="panel start"><h2>Listening…</h2>
-    <p class="hint">Finding bat passes, measuring calls and comparing sounds. The first scan of a big folder can take a while on a laptop. You can leave this page open.</p>
+  $("#main").innerHTML = `<section class="panel start"><h2>Working…</h2>
+    <p class="hint">Finding bat calls, measuring them and comparing sounds. The first run on a big folder can take a while on a laptop. Results are cached, so next time is fast. You can leave this page open.</p>
     <div class="log" id="log"></div></section>`;
   clearInterval(poller);
   poller = setInterval(async () => {
@@ -148,7 +174,7 @@ function render() {
   const tabs = [["todo", "To review"], ["all", "All groups"], ["done", "Reviewed"], ["night", "Night activity"]];
   let body = `<div class="tabs" role="group" aria-label="View">${tabs.map(([k, l]) => `<button data-view="${k}" aria-pressed="${view === k}">${l}</button>`).join("")}</div>`;
   if (view === "night") { $("#main").innerHTML = body + nightHtml(); return; }
-  body += `<p class="hint">Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once. ${view === "todo" ? "Groups are ordered so the ones that teach WildWard the most come first." : ""} After two species are labelled, WildWard points each remaining group to the closest species you've labelled. Confidence scores appear once five species are labelled.</p>`;
+  body += `<p class="hint">Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once. ${view === "todo" ? "Groups are ordered so the ones that teach WildWard the most come first." : ""} ${survey.reference ? `Species suggestions come from your reference library (${survey.reference.species} species) plus your labels.` : "Add a reference library, or label two species, and WildWard starts suggesting species for the rest."} It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming. Confidence scores appear once it knows five species.</p>`;
   let groups = survey.clusters.filter(c => {
     const done = c.passes.every(i => P[i].label);
     return view === "all" || (view === "done" ? done : !done);
@@ -186,9 +212,9 @@ function groupHtml(c) {
 
 function sugTag(sug, conf) {
   // with only a few labelled species every call gets forced into one of them, so a percentage would be fake
-  const n = new Set(survey.passes.map(p => p.label).filter(Boolean)).size;
+  const n = (survey.known_species || []).length;
   return n < 5
-    ? `<span class="tag sug" title="The model can only pick between species you have labelled">closest of your ${n} labelled species: ${esc(sug)}</span>`
+    ? `<span class="tag sug" title="The model can only pick between species it knows">closest of the ${n} species it knows: ${esc(sug)}</span>`
     : `<span class="tag sug" title="Model suggestion, not reviewed">suggested: ${esc(sug)} · ${(conf * 100).toFixed(0)}%</span>`;
 }
 
@@ -255,6 +281,7 @@ $("#export").onclick = async () => {
   toast("Saved in the survey folder (.wildward): passes.csv, calls.csv and report.html");
 };
 $("#openOther").onclick = () => showStart({ folder: survey && survey.folder });
+$("#refBtn").onclick = () => survey && showReference();
 
 const esc = s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
 const topKey = o => Object.entries(o || {}).sort((a, b) => b[1] - a[1])[0]?.[0];

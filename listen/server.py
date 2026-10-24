@@ -50,6 +50,27 @@ class App:
         threading.Thread(target=run, daemon=True).start()
         return {"ok": True}
 
+    def learn_reference(self, folder: str, te: int) -> dict:
+        if not self.survey or self.state != "ready":
+            return {"error": "Open a survey first."}
+        path = Path(folder).expanduser() if folder else None
+        if path is not None and not path.is_dir():
+            return {"error": f"Folder not found: {folder}"}
+        survey = self.survey
+        self.state, self.log = "scanning", [f"Learning species from {path}" if path else "Removing reference library"]
+
+        def run():
+            try:
+                survey.set_reference(path, te, progress=self.progress)
+                self.state = "ready"
+            except Exception as e:
+                self.progress(f"Reference library failed: {e}")
+                traceback.print_exc()
+                self.state = "ready"  # the survey itself is still fine
+
+        threading.Thread(target=run, daemon=True).start()
+        return {"ok": True}
+
     def status(self) -> dict:
         with self.lock:
             return {"state": self.state, "log": self.log[-8:],
@@ -97,6 +118,9 @@ def make_handler(app: App):
             body = json.loads(self.rfile.read(n) or b"{}")
             if self.path == "/api/open":
                 res = app.open(str(body.get("folder", "")), int(body.get("te") or 1), bool(body.get("rescan")))
+                return self._json(res, 400 if "error" in res else 200)
+            if self.path == "/api/reference":
+                res = app.learn_reference(str(body.get("folder") or ""), int(body.get("te") or 1))
                 return self._json(res, 400 if "error" in res else 200)
             if self.path == "/api/label":
                 if not self._ready():
