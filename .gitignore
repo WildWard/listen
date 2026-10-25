@@ -1,3 +1,5 @@
 testdata/
 __pycache__/
 .wildward/
+.venv/
+.tools/
