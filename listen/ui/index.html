@@ -58,6 +58,7 @@ main { padding: 20px 24px 80px; max-width: 1400px; margin: 0 auto; }
 .start label { display: block; color: var(--fog); margin: 14px 0 6px; }
 .start input[type=text], .start select { width: 100%; background: #0b1812; color: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 .log { font: 12px/1.6 ui-monospace, monospace; color: var(--fog); background: #0b1812; border-radius: 10px; padding: 12px; margin-top: 16px; white-space: pre-wrap; min-height: 3em; }
+.lang { background: var(--card); color: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .85rem; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--fog); margin-top: 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 table.sum { border-collapse: collapse; width: 100%; font-size: .92rem; }
@@ -70,23 +71,33 @@ table.sum td, table.sum th { border-bottom: 1px solid var(--line); padding: 7px 
   <div class="brand">Wild<span>Ward</span> Listen</div>
   <div class="folder" id="folder"></div>
   <div class="stats" id="stats" hidden>
-    <span class="stat"><b id="nPasses">0</b> passes</span>
-    <span class="stat"><b id="nReviewed">0</b> reviewed</span>
-    <span class="bar" title="Share of passes reviewed"><i id="progress" style="width:0"></i></span>
-    <button class="btn ghost" id="refBtn">Reference library</button>
-    <button class="btn ghost" id="openOther">Open another survey</button>
-    <button class="btn" id="export">Export</button>
+    <span class="stat"><b id="nPasses">0</b> <span data-t="passes">passes</span></span>
+    <span class="stat"><b id="nReviewed">0</b> <span data-t="reviewed">reviewed</span></span>
+    <span class="bar" data-t-title="Share of passes reviewed" title="Share of passes reviewed"><i id="progress" style="width:0"></i></span>
+    <button class="btn ghost" id="refBtn" data-t="Reference library">Reference library</button>
+    <button class="btn ghost" id="openOther" data-t="Open another survey">Open another survey</button>
+    <button class="btn" id="export" data-t="Export">Export</button>
   </div>
+  <select id="lang" aria-label="Language" class="lang"></select>
 </header>
 <main id="main"></main>
 <datalist id="species"></datalist>
 <div id="toast" role="status"></div>
 <audio id="player"></audio>
+<script src="/i18n.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 let survey = null, view = "todo", poller = null;
 const expanded = new Set(), unpicked = new Set();
 const COLORS = ["#8fbf7a", "#e9a04b", "#7fb3c8", "#d98ab5", "#c9c36a", "#9a8fd9", "#e07a5f", "#5fbfa8"];
+
+function applyStatic() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll("[data-t-title]").forEach(el => { el.title = t(el.dataset.tTitle); });
+  $("#lang").innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${k === LANG ? "selected" : ""}>${v}</option>`).join("");
+  $("#lang").title = LANG === "en" ? "" : t("Translations are a first draft. Corrections welcome: wildward.org@gmail.com");
+}
 
 async function boot() {
   const st = await (await fetch("/api/status")).json();
@@ -98,18 +109,19 @@ async function boot() {
 function showStart(st = {}) {
   $("#stats").hidden = true; $("#folder").textContent = "";
   $("#main").innerHTML = `<section class="panel start">
-    <h2>Open a survey</h2>
-    <p class="hint">Point WildWard Listen at a folder of bat-detector recordings (WAV). It finds every bat pass, groups similar calls and measures them, all on this computer. Results are saved inside the folder, so you can close the app any time.</p>
-    <label for="f">Folder with recordings</label>
+    <h2>${t("Open a survey")}</h2>
+    <p class="hint">${t("Point WildWard Listen at a folder of bat-detector recordings (WAV). It finds every bat pass, groups similar calls and measures them, all on this computer. Results are saved inside the folder, so you can close the app any time.")}</p>
+    ${LANG !== "en" ? `<p class="hint">${t("Translations are a first draft. Corrections welcome: wildward.org@gmail.com")}</p>` : ""}
+    <label for="f">${t("Folder with recordings")}</label>
     <input id="f" type="text" placeholder="e.g. D:\\Surveys\\Taman Negara night 1" value="${esc(st.folder || "")}">
-    <label for="te">How were the files recorded?</label>
+    <label for="te">${t("How were the files recorded?")}</label>
     <select id="te">
-      <option value="1">Real time (full-spectrum, 192 kHz or higher)</option>
-      <option value="10">Time-expanded 10x</option>
-      <option value="16">Time-expanded 16x</option>
+      <option value="1">${t("Real time (full-spectrum, 192 kHz or higher)")}</option>
+      <option value="10">${t("Time-expanded 10x")}</option>
+      <option value="16">${t("Time-expanded 16x")}</option>
     </select>
-    <label><input type="checkbox" id="rescan"> Scan again even if results already exist</label>
-    <p style="margin-top:18px"><button class="btn" id="go">Scan recordings</button></p>
+    <label><input type="checkbox" id="rescan"> ${t("Scan again even if results already exist")}</label>
+    <p style="margin-top:18px"><button class="btn" id="go">${t("Scan recordings")}</button></p>
     ${st.state === "error" ? `<div class="log">${esc((st.log || []).join("\n"))}</div>` : ""}
   </section>`;
   $("#go").onclick = async () => {
@@ -123,32 +135,32 @@ function showStart(st = {}) {
 function showReference() {
   const r = survey.reference;
   $("#main").innerHTML = `<section class="panel start">
-    <h2>Reference library</h2>
-    <p class="hint">Teach WildWard Listen the species you already know. Pick a folder with one sub-folder per species, named exactly as it should appear, for example <code>My calls&#92;Hipposideros larvatus&#92;*.wav</code>. WildWard learns them before you review anything, then suggests species for this survey with a confidence score. Your own labels from this survey always count more than the library.</p>
-    ${r ? `<p class="hint">Current library: <b>${esc(r.path)}</b>, ${r.species} species, ${r.passes} reference passes.</p>` : ""}
-    <label for="rf">Reference folder</label>
+    <h2>${t("Reference library")}</h2>
+    <p class="hint">${t("Teach WildWard Listen the species you already know. Pick a folder with one sub-folder per species, named exactly as it should appear, for example {0}. WildWard learns them before you review anything, then suggests species for this survey with a confidence score. Your own labels from this survey always count more than the library.", "<code>My calls&#92;Hipposideros larvatus&#92;*.wav</code>")}</p>
+    ${r ? `<p class="hint">${t("Current library: {0}, {1} species, {2} reference passes.", `<b>${esc(r.path)}</b>`, r.species, r.passes)}</p>` : ""}
+    <label for="rf">${t("Reference folder")}</label>
     <input id="rf" type="text" placeholder="e.g. D:&#92;Bat calls&#92;Malaysia reference" value="${esc(r ? r.path : "")}">
-    <label for="rte">How were the reference files recorded?</label>
-    <select id="rte"><option value="1">Real time (192 kHz or higher)</option><option value="10">Time-expanded 10x</option><option value="16">Time-expanded 16x</option></select>
-    <p class="hint" style="margin-top:8px">Mixed formats? Put a file named te.txt containing 10 or 16 inside any species folder that is time-expanded.</p>
-    <p style="margin-top:18px"><button class="btn" id="learn">Learn species</button>
-      ${r ? `<button class="btn ghost" id="forget">Stop using this library</button>` : ""}
-      <button class="btn ghost" id="back">Back to review</button></p>
+    <label for="rte">${t("How were the reference files recorded?")}</label>
+    <select id="rte"><option value="1">${t("Real time (192 kHz or higher)")}</option><option value="10">${t("Time-expanded 10x")}</option><option value="16">${t("Time-expanded 16x")}</option></select>
+    <p class="hint" style="margin-top:8px">${t("Mixed formats? Put a file named te.txt containing 10 or 16 inside any species folder that is time-expanded.")}</p>
+    <p style="margin-top:18px"><button class="btn" id="learn">${t("Learn species")}</button>
+      ${r ? `<button class="btn ghost" id="forget">${t("Stop using this library")}</button>` : ""}
+      <button class="btn ghost" id="back">${t("Back to review")}</button></p>
   </section>`;
   const go = async folder => {
     const res = await (await fetch("/api/reference", { method: "POST", body: JSON.stringify({ folder, te: +$("#rte").value }) })).json();
     if (res.error) return toast(res.error);
     showScanning();
   };
-  $("#learn").onclick = () => { const f = $("#rf").value.trim(); if (!f) return toast("Type the reference folder first."); go(f); };
+  $("#learn").onclick = () => { const f = $("#rf").value.trim(); if (!f) return toast(t("Type the reference folder first.")); go(f); };
   if ($("#forget")) $("#forget").onclick = () => go("");
   $("#back").onclick = render;
 }
 
 function showScanning() {
   $("#stats").hidden = true;
-  $("#main").innerHTML = `<section class="panel start"><h2>Working…</h2>
-    <p class="hint">Finding bat calls, measuring them and comparing sounds. The first run on a big folder can take a while on a laptop. Results are cached, so next time is fast. You can leave this page open.</p>
+  $("#main").innerHTML = `<section class="panel start"><h2>${t("Working…")}</h2>
+    <p class="hint">${t("Finding bat calls, measuring them and comparing sounds. The first run on a big folder can take a while on a laptop. Results are cached, so next time is fast. You can leave this page open.")}</p>
     <div class="log" id="log"></div></section>`;
   clearInterval(poller);
   poller = setInterval(async () => {
@@ -174,17 +186,17 @@ function render() {
   $("#progress").style.width = (P.length ? 100 * reviewed / P.length : 0) + "%";
   $("#species").innerHTML = [...new Set(P.map(p => p.label).filter(Boolean))].sort().map(l => `<option value="${esc(l)}">`).join("");
   const tabs = [["todo", "To review"], ["all", "All groups"], ["done", "Reviewed"], ["night", "Night activity"], ["season", "Sites & nights"]];
-  let body = `<div class="tabs" role="group" aria-label="View">${tabs.map(([k, l]) => `<button data-view="${k}" aria-pressed="${view === k}">${l}</button>`).join("")}</div>`;
+  let body = `<div class="tabs" role="group" aria-label="View">${tabs.map(([k, l]) => `<button data-view="${k}" aria-pressed="${view === k}">${t(l)}</button>`).join("")}</div>`;
   if (view === "night") { $("#main").innerHTML = body + nightHtml(); return; }
   if (view === "season") { $("#main").innerHTML = body + seasonHtml(); return; }
-  body += `<p class="hint">Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once. ${view === "todo" ? "Groups are ordered so the ones that teach WildWard the most come first." : ""} ${survey.reference ? `Species suggestions come from your reference library (${survey.reference.species} species) plus your labels.` : "Add a reference library, or label two species, and WildWard starts suggesting species for the rest."} It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming, and use "Not in my library" for bats it doesn't know. It learns from that too. Confidence scores appear once it knows five species.</p>`;
+  body += `<p class="hint">${t("Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once.")} ${view === "todo" ? t("Groups are ordered so the ones that teach WildWard the most come first.") : ""} ${survey.reference ? t("Species suggestions come from your reference library ({0} species) plus your labels.", survey.reference.species) : t("Add a reference library, or label two species, and WildWard starts suggesting species for the rest.")} ${t("It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming, and use \"Not in my library\" for bats it doesn't know. It learns from that too. Confidence scores appear once it knows five species.")}</p>`;
   let groups = survey.clusters.filter(c => {
     const done = c.passes.every(i => P[i].label);
     return view === "all" || (view === "done" ? done : !done);
   });
   if (view === "todo") groups = [...groups].sort((a, b) => b.priority - a.priority);
   if (!P.length) body += `<p class="empty">No bat passes found in this folder${survey.skipped.length ? ` (${survey.skipped.length} files skipped: ${esc(survey.skipped[0].reason)})` : ""}.</p>`;
-  else if (!groups.length) body += `<p class="empty">${view === "todo" ? "Everything is reviewed. Export the results when you're ready." : "Nothing here yet."}</p>`;
+  else if (!groups.length) body += `<p class="empty">${view === "todo" ? t("Everything is reviewed. Export the results when you're ready.") : t("Nothing here yet.")}</p>`;
   else body += groups.map(groupHtml).join("");
   $("#main").innerHTML = body;
 }
@@ -198,40 +210,40 @@ function groupHtml(c) {
   const fc = median(ms.map(m => m.f_char_khz)), dur = median(ms.map(m => m.duration_ms));
   const shown = expanded.has(c.id) ? ps : ps.slice(0, 8);
   return `<section class="cluster ${done ? "done" : ""}" aria-label="Group ${c.id + 1}">
-    <div class="chead"><h2>Group ${c.id + 1}</h2>
-      <span class="meta">${ps.length} passes${ms.length ? ` · calls around ${fc.toFixed(1)} kHz, ${dur.toFixed(1)} ms` : ""}</span>
+    <div class="chead"><h2>${t("Group {0}", c.id + 1)}</h2>
+      <span class="meta">${t("{0} passes", ps.length)}${ms.length ? ` · ${t("calls around {0} kHz, {1} ms", fc.toFixed(1), dur.toFixed(1))}` : ""}</span>
       ${lab ? `<span class="tag ok">${esc(lab)}</span>` : ""}
       ${sug && !done ? sugTag(sug, conf, ps) : ""}
     </div>
-    ${snd ? `<p class="sound">Sound type: ${esc(snd)}</p>` : ""}
+    ${snd ? `<p class="sound">${t("Sound type:")} ${esc(snd)}</p>` : ""}
     ${c.unusual && !done && c.unusual * 2 >= ps.length ? unusualNote(c, ps) : ""}
     <div class="grid">${shown.map(passHtml).join("")}</div>
-    ${ps.length > 8 ? `<p><button class="more" data-more="${c.id}">${expanded.has(c.id) ? "Show fewer" : `Show all ${ps.length} passes`}</button></p>` : ""}
+    ${ps.length > 8 ? `<p><button class="more" data-more="${c.id}">${expanded.has(c.id) ? t("Show fewer") : t("Show all {0} passes", ps.length)}</button></p>` : ""}
     <div class="labelrow">
-      <input type="text" list="species" placeholder="Species or genus, e.g. Hipposideros larvatus" aria-label="Label for group ${c.id + 1}" data-input="${c.id}" value="${esc(lab || "")}">
-      <button class="btn" data-label="${c.id}">Label ticked passes</button>
-      <button class="btn ghost" data-unknown="${c.id}" title="For bats that aren't in your library. WildWard learns to send similar passes here instead of guessing a wrong species.">Not in my library</button>
-      ${done ? `<button class="btn ghost" data-clear="${c.id}">Clear labels</button>` : ""}
+      <input type="text" list="species" placeholder="${t("Species or genus, e.g. Hipposideros larvatus")}" aria-label="Label for group ${c.id + 1}" data-input="${c.id}" value="${esc(lab || "")}">
+      <button class="btn" data-label="${c.id}">${t("Label ticked passes")}</button>
+      <button class="btn ghost" data-unknown="${c.id}" title="${t("For bats that aren't in your library. WildWard learns to send similar passes here instead of guessing a wrong species.")}">${t("Not in my library")}</button>
+      ${done ? `<button class="btn ghost" data-clear="${c.id}">${t("Clear labels")}</button>` : ""}
     </div></section>`;
 }
 
 function unusualNote(c, ps) {
   const ex = ps.find(p => p.unusual).unusual;
-  return `<p class="unusual" role="note"><b>Unusual frequency</b> · ${c.unusual === ps.length ? (ps.length === 1 ? "This pass calls" : `All ${ps.length} passes call`) : `${c.unusual} of ${ps.length} passes call`} around ${c.unusual_khz} kHz, at least 5% from every constant-frequency species you know (closest: <i>${esc(ex.nearest)}</i>, ${ex.nearest_khz} kHz). It may be a species missing from your library, or one worth a closer look. Listen carefully and check before labelling.</p>`;
+  return `<p class="unusual" role="note"><b>${t("Unusual frequency")}</b> · ${t("{0} of {1} passes call around {2} kHz, at least 5% from every constant-frequency species you know (closest: {3}, {4} kHz). It may be a species missing from your library, or one worth a closer look. Listen carefully and check before labelling.", c.unusual, ps.length, c.unusual_khz, `<i>${esc(ex.nearest)}</i>`, ex.nearest_khz)}</p>`;
 }
 
 function sugTag(sug, conf, ps) {
   // with only a few labelled species every call gets forced into one of them, so a percentage would be fake
   const n = (survey.known_species || []).length;
-  if (n < 5) return `<span class="tag sug" title="The model can only pick between species it knows">closest of the ${n} species it knows: ${esc(sug)}</span>`;
+  if (n < 5) return `<span class="tag sug" title="The model can only pick between species it knows">${t("closest of the {0} species it knows: {1}", n, esc(sug))}</span>`;
   // unsure of the species but sure of the genus: say the genus instead of a likely-wrong species
   const open = ps.filter(p => !p.label), counts = {};
   open.filter(p => p.genus).forEach(p => { counts[p.genus] = (counts[p.genus] || 0) + 1; });
   const g = topKey(counts);
   const gs = open.filter(p => p.genus && p.genus === g);
   if (conf < 0.7 && g && gs.length * 2 >= open.length)
-    return `<span class="tag sug" title="Not sure of the species, but sure of the genus. Best species guess: ${esc(sug)} (${(conf * 100).toFixed(0)}%)">probably <i>${esc(g)}</i> (genus) · ${(mean(gs.map(p => p.genus_confidence)) * 100).toFixed(0)}%</span>`;
-  return `<span class="tag sug" title="Model suggestion, not reviewed">suggested: ${esc(sug)} · ${(conf * 100).toFixed(0)}%${conf < 0.7 ? " (unsure)" : ""}</span>`;
+    return `<span class="tag sug" title="Not sure of the species, but sure of the genus. Best species guess: ${esc(sug)} (${(conf * 100).toFixed(0)}%)">${t("probably {0} (genus)", `<i>${esc(g)}</i>`)} · ${(mean(gs.map(p => p.genus_confidence)) * 100).toFixed(0)}%</span>`;
+  return `<span class="tag sug" title="Model suggestion, not reviewed">${t("suggested: {0}", esc(sug))} · ${(conf * 100).toFixed(0)}%${conf < 0.7 ? " " + t("(unsure)") : ""}</span>`;
 }
 
 function passHtml(p) {
@@ -241,13 +253,13 @@ function passHtml(p) {
   return `<div class="pass ${off ? "off" : ""}">
     <input class="pick" type="checkbox" ${off ? "" : "checked"} data-pick="${p.id}" aria-label="Include pass ${p.id}">
     <img src="/media/${p.id}.png" alt="Spectrogram of pass ${p.id}" data-play="${p.id}" loading="lazy">
-    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${p.unusual.f_khz} kHz, ${Math.round(p.unusual.gap * 100)}% from the closest known species">unusual</b>` : ""} ${who}</span>
+    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${p.unusual.f_khz} kHz, ${Math.round(p.unusual.gap * 100)}% from the closest known species">${t("unusual")}</b>` : ""} ${who}</span>
       <button class="play" data-play="${p.id}" aria-label="Play pass ${p.id}, slowed down 10x">▶</button></div></div>`;
 }
 
 function nightHtml() {
   const act = survey.activity || {}, hours = Object.keys(act).map(Number);
-  if (!hours.length) return `<p class="empty">No recording times found. Times are read from file names like 20261024_213000.wav.</p>`;
+  if (!hours.length) return `<p class="empty">${t("No recording times found. Times are read from file names like 20261024_213000.wav.")}</p>`;
   // order hours from noon to noon so a night reads left to right
   const used = [...Array(24).keys()].map(h => (h + 12) % 24).filter(h => act[h]);
   const groups = [...new Set(Object.values(act).flatMap(o => Object.keys(o)))];
@@ -267,11 +279,11 @@ function nightHtml() {
   }
   const totals = groups.map(g => [g, Object.values(act).reduce((s, o) => s + (o[g] || 0), 0)]).sort((a, b) => b[1] - a[1]);
   const src = (survey.time_source || []).join(", ");
-  return `<section class="panel"><h2>Bat activity through the night</h2>
-    <p class="hint">Passes per hour, coloured by your labels, or by sound type where nothing is labelled yet. Times from: ${esc(src || "unknown")}.</p>
+  return `<section class="panel"><h2>${t("Bat activity through the night")}</h2>
+    <p class="hint">${t("Passes per hour, coloured by your labels, or by sound type where nothing is labelled yet. Times from: {0}.", esc(src || "unknown"))}</p>
     <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Bat passes per hour">${bars}</svg>
     <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(g)}</span>`).join("")}</div></section>
-    <section class="panel"><h2>Summary</h2><table class="sum"><tr><th>Group</th><th>Passes</th></tr>
+    <section class="panel"><h2>${t("Summary")}</h2><table class="sum"><tr><th>${t("Group")}</th><th>${t("Passes")}</th></tr>
     ${totals.map(([g, n]) => `<tr><td>${esc(g)}</td><td>${n}</td></tr>`).join("")}</table></section>`;
 }
 
@@ -290,12 +302,12 @@ function seasonHtml() {
     const dots = located.map(s => `<g><circle cx="${sx(s.lon).toFixed(1)}" cy="${sy(s.lat).toFixed(1)}" r="${(6 + 14 * Math.sqrt(s.passes / maxP)).toFixed(1)}" style="fill:var(--wing);fill-opacity:.75"><title>${esc(s.id)}: ${s.passes} passes</title></circle>
       <text x="${(sx(s.lon) + 12).toFixed(1)}" y="${(sy(s.lat) - 12).toFixed(1)}" fill="#cdd6cf" font-size="22">${esc(String(s.id).slice(-6))}</text></g>`).join("");
     const km = (span * 111).toFixed(span * 111 < 10 ? 1 : 0);
-    out += `<section class="panel"><h2>Detector sites</h2>
+    out += `<section class="panel"><h2>${t("Detector sites")}</h2>
       <p class="hint">From GPS positions stored in the recordings (GUANO metadata). Dot size = bat passes. The area shown is about ${km} km across. Works offline, no map tiles.</p>
       <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Detector positions">${dots}</svg></section>`;
   }
   if (sites.length) {
-    out += `<section class="panel"><h2>Sites</h2><div style="overflow-x:auto"><table class="sum"><tr><th>Detector</th><th>Position</th><th>Device</th><th>Files</th><th>Passes</th><th>Most common</th></tr>
+    out += `<section class="panel"><h2>${t("Sites")}</h2><div style="overflow-x:auto"><table class="sum"><tr><th>${t("Detector")}</th><th>${t("Position")}</th><th>${t("Device")}</th><th>${t("Files")}</th><th>${t("Passes")}</th><th>${t("Most common")}</th></tr>
       ${sites.map(s => `<tr><td>${esc(s.id)}</td><td>${s.lat != null ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : "-"}</td><td>${esc(s.device || "")}</td><td>${s.files}</td><td>${s.passes}</td><td>${esc(topKey(s.groups) || "")}</td></tr>`).join("")}</table></div></section>`;
   } else {
     out += `<p class="empty">No detector positions found in these recordings. Song Meter, Pettersson and other detectors that write GUANO metadata with GPS show up here automatically.</p>`;
@@ -316,7 +328,7 @@ function seasonHtml() {
       if (nights.length <= 31) bars += `<text x="${x + bw / 2}" y="${H - 8}" fill="#9fb0a6" font-size="10" text-anchor="middle">${n.night.slice(5)}</text>`;
       x += bw + 4;
     }
-    out += `<section class="panel"><h2>Activity night by night</h2>
+    out += `<section class="panel"><h2>${t("Activity night by night")}</h2>
       <p class="hint">Passes per night (noon to noon), coloured by your labels, or by sound type where nothing is labelled yet. ${nights.length} night${nights.length > 1 ? "s" : ""}: ${nights[0].night} to ${nights[nights.length - 1].night}.</p>
       <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Bat passes per night">${bars}</svg>
       <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(g)}</span>`).join("")}</div></section>`;
@@ -333,19 +345,21 @@ document.addEventListener("click", async e => {
   if (t.dataset.label || t.dataset.clear || t.dataset.unknown) {
     const id = +(t.dataset.label || t.dataset.clear || t.dataset.unknown), c = survey.clusters.find(c => c.id === id);
     const label = t.dataset.clear ? null : t.dataset.unknown ? "Unknown (not in library)" : document.querySelector(`[data-input="${id}"]`).value.trim();
-    if (t.dataset.label && !label) { toast("Type a species or genus first."); return; }
+    if (t.dataset.label && !label) { toast(t("Type a species or genus first.")); return; }
     const ids = c.passes.filter(i => !unpicked.has(i));
-    if (!ids.length) { toast("Tick at least one pass."); return; }
+    if (!ids.length) { toast(t("Tick at least one pass.")); return; }
     t.disabled = true;
     survey = await (await fetch("/api/label", { method: "POST", body: JSON.stringify({ passes: ids, label }) })).json();
-    render(); toast(label ? `Labelled ${ids.length} passes as ${label}.` : `Cleared ${ids.length} labels.`);
+    render(); toast(label ? t("Labelled {0} passes as {1}.", ids.length, label) : t("Cleared {0} labels.", ids.length));
   }
 });
 $("#export").onclick = async () => {
   const r = await (await fetch("/api/export", { method: "POST" })).json();
-  toast(`Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html and occurrences.csv (${r.n_occurrences ?? 0} reviewed records in Darwin Core, ready for GBIF)`);
+  toast(t("Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html and occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF)", r.n_occurrences ?? 0));
 };
 $("#openOther").onclick = () => showStart({ folder: survey && survey.folder });
+$("#lang").onchange = e => { setLang(e.target.value); applyStatic(); survey ? render() : boot(); };
+applyStatic();
 $("#refBtn").onclick = () => survey && showReference();
 
 const esc = s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));

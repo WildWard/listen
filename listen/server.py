@@ -102,6 +102,8 @@ def make_handler(app: App):
         def do_GET(self):
             if self.path in ("/", "/index.html"):
                 return self._send(UI.read_bytes(), "text/html; charset=utf-8")
+            if self.path == "/i18n.js":
+                return self._send((UI.parent / "i18n.js").read_bytes(), "text/javascript; charset=utf-8")
             if self.path == "/api/status":
                 return self._json(app.status())
             if self.path == "/api/survey":
