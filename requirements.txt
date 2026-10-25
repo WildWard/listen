@@ -6,3 +6,4 @@ pillow==13.0.0
 tensorflow-cpu==2.21.0; sys_platform != "darwin"
 tensorflow==2.21.0; sys_platform == "darwin"   # no tensorflow-cpu build for macOS
 kagglehub==1.0.3
+pywebview==6.2.1   # desktop window

@@ -55,7 +55,8 @@ if (-not $NoShortcut) {
     $desktop = [Environment]::GetFolderPath("Desktop")
     $shell = New-Object -ComObject WScript.Shell
     $lnk = $shell.CreateShortcut((Join-Path $desktop "WildWard Listen.lnk"))
-    $lnk.TargetPath = Join-Path $App "WildWard Listen.bat"
+    $lnk.TargetPath = Join-Path $Venv "Scripts\pythonw.exe"   # pythonw: opens the app window with no console
+    $lnk.Arguments = "`"$(Join-Path $App 'run.py')`" --app"
     $lnk.WorkingDirectory = $App
     $lnk.Description = "Offline bat-call review"
     $icon = Join-Path $App "listen\ui\icon.ico"

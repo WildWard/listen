@@ -16,6 +16,9 @@ const I18N = {
     th: "คำแปลนี้เป็นฉบับร่าง ยินดีรับคำแก้ไข: wildward.org@gmail.com",
     fil: "Unang bersyon pa lang ang salin. Malugod naming tatanggapin ang mga pagtatama: wildward.org@gmail.com" },
 
+  "Browse…": { id: "Telusuri…", ms: "Semak imbas…", vi: "Chọn…", th: "เลือก…", fil: "Mag-browse…" },
+  "Or drag a folder of recordings onto this window.": { id: "Atau seret folder rekaman ke jendela ini.", ms: "Atau seret folder rakaman ke tetingkap ini.", vi: "Hoặc kéo thư mục bản ghi vào cửa sổ này.", th: "หรือลากโฟลเดอร์ไฟล์เสียงมาวางที่หน้าต่างนี้", fil: "O i-drag ang folder ng mga recording papunta sa window na ito." },
+  "Drag and drop works in the desktop app. Here, type or paste the folder path.": { id: "Seret dan lepas berfungsi di aplikasi desktop. Di sini, ketik atau tempel alamat folder.", ms: "Seret dan lepas berfungsi dalam aplikasi desktop. Di sini, taip atau tampal laluan folder.", vi: "Kéo thả hoạt động trong ứng dụng máy tính. Ở đây, hãy nhập hoặc dán đường dẫn thư mục.", th: "ลากวางใช้ได้ในแอปเดสก์ท็อป ที่นี่ให้พิมพ์หรือวางที่อยู่โฟลเดอร์", fil: "Gumagana ang drag and drop sa desktop app. Dito, i-type o i-paste ang path ng folder." },
   "Open a survey": { id: "Buka survei", ms: "Buka tinjauan", vi: "Mở khảo sát", th: "เปิดการสำรวจ", fil: "Magbukas ng survey" },
   "Point WildWard Listen at a folder of bat-detector recordings (WAV). It finds every bat pass, groups similar calls and measures them, all on this computer. Results are saved inside the folder, so you can close the app any time.": {
     id: "Pilih folder berisi rekaman detektor kelelawar (WAV). WildWard Listen menemukan setiap lintasan kelelawar, mengelompokkan suara yang mirip dan mengukurnya, semuanya di komputer ini. Hasil disimpan di dalam folder, jadi aplikasi bisa ditutup kapan saja.",

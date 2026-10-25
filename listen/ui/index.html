@@ -58,6 +58,9 @@ main { padding: 20px 24px 80px; max-width: 1400px; margin: 0 auto; }
 .start label { display: block; color: var(--fog); margin: 14px 0 6px; }
 .start input[type=text], .start select { width: 100%; background: #0b1812; color: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 .log { font: 12px/1.6 ui-monospace, monospace; color: var(--fog); background: #0b1812; border-radius: 10px; padding: 12px; margin-top: 16px; white-space: pre-wrap; min-height: 3em; }
+.pickrow { display: flex; gap: 8px; align-items: center; }
+.pickrow input { flex: 1; min-width: 0; }
+body.dropping main { outline: 3px dashed var(--wing); outline-offset: -12px; border-radius: 18px; }
 .lang { background: var(--card); color: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .85rem; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--fog); margin-top: 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
@@ -99,6 +102,21 @@ function applyStatic() {
   $("#lang").title = LANG === "en" ? "" : t("Translations are a first draft. Corrections welcome: wildward.org@gmail.com");
 }
 
+// desktop window (pywebview): native folder picker and drag and drop
+const inWindow = () => !!(window.pywebview && window.pywebview.api);
+const browseBtn = id => inWindow() ? `<button class="btn ghost" type="button" data-browse="${id}">${t("Browse…")}</button>` : "";
+window.addEventListener("pywebviewready", () => { if ($("#f") || $("#rf")) (survey && $("#rf") ? showReference() : showStart({ folder: ($("#f") || {}).value })); });
+window.onDropFolder = folder => {
+  document.body.classList.remove("dropping");
+  if ($("#rf")) { $("#rf").value = folder; $("#learn").click(); return; }
+  if (!$("#f")) showStart({ folder });
+  $("#f").value = folder;
+  $("#go").click();
+};
+["dragenter", "dragover"].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); document.body.classList.add("dropping"); }));
+["dragleave", "drop"].forEach(ev => document.addEventListener(ev, e => { if (ev === "drop" || !e.relatedTarget) document.body.classList.remove("dropping"); }));
+document.addEventListener("drop", e => { e.preventDefault(); if (!inWindow()) toast(t("Drag and drop works in the desktop app. Here, type or paste the folder path.")); });
+
 async function boot() {
   const st = await (await fetch("/api/status")).json();
   if (st.state === "ready") return loadSurvey();
@@ -113,7 +131,8 @@ function showStart(st = {}) {
     <p class="hint">${t("Point WildWard Listen at a folder of bat-detector recordings (WAV). It finds every bat pass, groups similar calls and measures them, all on this computer. Results are saved inside the folder, so you can close the app any time.")}</p>
     ${LANG !== "en" ? `<p class="hint">${t("Translations are a first draft. Corrections welcome: wildward.org@gmail.com")}</p>` : ""}
     <label for="f">${t("Folder with recordings")}</label>
-    <input id="f" type="text" placeholder="e.g. D:\\Surveys\\Taman Negara night 1" value="${esc(st.folder || "")}">
+    <div class="pickrow"><input id="f" type="text" placeholder="e.g. D:\\Surveys\\Taman Negara night 1" value="${esc(st.folder || "")}">${browseBtn("f")}</div>
+    ${inWindow() ? `<p class="hint">${t("Or drag a folder of recordings onto this window.")}</p>` : ""}
     <label for="te">${t("How were the files recorded?")}</label>
     <select id="te">
       <option value="1">${t("Real time (full-spectrum, 192 kHz or higher)")}</option>
@@ -139,7 +158,7 @@ function showReference() {
     <p class="hint">${t("Teach WildWard Listen the species you already know. Pick a folder with one sub-folder per species, named exactly as it should appear, for example {0}. WildWard learns them before you review anything, then suggests species for this survey with a confidence score. Your own labels from this survey always count more than the library.", "<code>My calls&#92;Hipposideros larvatus&#92;*.wav</code>")}</p>
     ${r ? `<p class="hint">${t("Current library: {0}, {1} species, {2} reference passes.", `<b>${esc(r.path)}</b>`, r.species, r.passes)}</p>` : ""}
     <label for="rf">${t("Reference folder")}</label>
-    <input id="rf" type="text" placeholder="e.g. D:&#92;Bat calls&#92;Malaysia reference" value="${esc(r ? r.path : "")}">
+    <div class="pickrow"><input id="rf" type="text" placeholder="e.g. D:&#92;Bat calls&#92;Malaysia reference" value="${esc(r ? r.path : "")}">${browseBtn("rf")}</div>
     <label for="rte">${t("How were the reference files recorded?")}</label>
     <select id="rte"><option value="1">${t("Real time (192 kHz or higher)")}</option><option value="10">${t("Time-expanded 10x")}</option><option value="16">${t("Time-expanded 16x")}</option></select>
     <p class="hint" style="margin-top:8px">${t("Mixed formats? Put a file named te.txt containing 10 or 16 inside any species folder that is time-expanded.")}</p>
@@ -357,18 +376,22 @@ function seasonHtml() {
 }
 
 document.addEventListener("click", async e => {
-  const t = e.target;
-  if (t.dataset.view) { view = t.dataset.view; render(); }
-  if (t.dataset.play) { const a = $("#player"); a.src = `/media/${t.dataset.play}.wav`; a.play(); }
-  if (t.dataset.more) { const id = +t.dataset.more; expanded.has(id) ? expanded.delete(id) : expanded.add(id); render(); }
-  if (t.dataset.pick) { const id = +t.dataset.pick; t.checked ? unpicked.delete(id) : unpicked.add(id); t.closest(".pass").classList.toggle("off", !t.checked); }
-  if (t.dataset.label || t.dataset.clear || t.dataset.unknown) {
-    const id = +(t.dataset.label || t.dataset.clear || t.dataset.unknown), c = survey.clusters.find(c => c.id === id);
-    const label = t.dataset.clear ? null : t.dataset.unknown ? "Unknown (not in library)" : document.querySelector(`[data-input="${id}"]`).value.trim();
-    if (t.dataset.label && !label) { toast(t("Type a species or genus first.")); return; }
+  const el = e.target;
+  if (el.dataset.view) { view = el.dataset.view; render(); }
+  if (el.dataset.browse) {
+    const folder = await window.pywebview.api.pick_folder();
+    if (folder) $("#" + el.dataset.browse).value = folder;
+  }
+  if (el.dataset.play) { const a = $("#player"); a.src = `/media/${el.dataset.play}.wav`; a.play(); }
+  if (el.dataset.more) { const id = +el.dataset.more; expanded.has(id) ? expanded.delete(id) : expanded.add(id); render(); }
+  if (el.dataset.pick) { const id = +el.dataset.pick; el.checked ? unpicked.delete(id) : unpicked.add(id); el.closest(".pass").classList.toggle("off", !el.checked); }
+  if (el.dataset.label || el.dataset.clear || el.dataset.unknown) {
+    const id = +(el.dataset.label || el.dataset.clear || el.dataset.unknown), c = survey.clusters.find(c => c.id === id);
+    const label = el.dataset.clear ? null : el.dataset.unknown ? "Unknown (not in library)" : document.querySelector(`[data-input="${id}"]`).value.trim();
+    if (el.dataset.label && !label) { toast(t("Type a species or genus first.")); return; }
     const ids = c.passes.filter(i => !unpicked.has(i));
     if (!ids.length) { toast(t("Tick at least one pass.")); return; }
-    t.disabled = true;
+    el.disabled = true;
     survey = await (await fetch("/api/label", { method: "POST", body: JSON.stringify({ passes: ids, label }) })).json();
     render(); toast(label ? t("Labelled {0} passes as {1}.", ids.length, label) : t("Cleared {0} labels.", ids.length));
   }

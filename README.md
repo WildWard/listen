@@ -19,6 +19,7 @@ Point it at a folder of bat-detector recordings. It finds every bat pass, measur
 - **Reads detector metadata.** GPS position, time and device from GUANO (Song Meter, Pettersson and others) and AudioMoth's own comments, so times don't depend on file names.
 - **Sites & nights.** An offline map of detector positions and activity night by night across a whole survey.
 - **Wind-site view.** Activity of open-air foragers by hour and night: the bats found flying at turbine height in Southeast Asia (free-tailed, sheath-tailed, house bats and relatives).
+- **A desktop app.** Its own window with native folder pickers and drag and drop (drop a survey folder, or any recording in it, to open it). Uses the WebView2 engine built into Windows 10 and 11; `python run.py` without `--app` still opens it in a browser.
 - **Speaks your language.** English, Bahasa Indonesia, Bahasa Melayu, Tiếng Việt, ไทย and Filipino (first-draft translations, corrections welcome).
 - **Exports** `passes.csv`, `calls.csv`, `report.html` and `occurrences.csv` into the survey folder. `occurrences.csv` is Darwin Core, ready to publish to GBIF, and holds only passes an expert reviewed.
 
@@ -42,7 +43,7 @@ Measured call frequencies match published values, for example *Hipposideros cerv
 
 1. On the [GitHub page](https://github.com/WildWard/listen), click **Code → Download ZIP** and unzip it somewhere permanent, e.g. `Documents\WildWard Listen`.
 2. Double-click **`Install WildWard Listen.bat`**. It sets up a private copy of Python and everything Listen needs inside that folder, then downloads the Perch 2.0 sound model. No admin rights, nothing installed system-wide. It needs internet once, about 1 GB, and takes 5-15 minutes.
-3. Double-click **WildWard Listen** on your desktop. It opens in your browser. From then on it works fully offline.
+3. Double-click **WildWard Listen** on your desktop. It opens as its own app window: drag a folder of recordings onto it, or use **Browse…**. From then on it works fully offline.
 
 To uninstall, delete the folder and the desktop shortcut.
 
