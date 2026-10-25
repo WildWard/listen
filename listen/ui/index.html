@@ -34,6 +34,8 @@ main { padding: 20px 24px 80px; max-width: 1400px; margin: 0 auto; }
 .chead h2 { margin: 0; font-size: 1.05rem; }
 .meta { color: var(--fog); font-size: .9rem; }
 .sound { color: var(--sky); font-size: .9rem; margin: 0 0 12px; }
+.unusual { border-left: 3px solid var(--wing); background: rgba(233,160,75,.1); padding: 10px 14px; border-radius: 6px; font-size: .9rem; margin: 0 0 14px; }
+.odd { color: var(--wing); font-weight: 600; }
 .tag { border-radius: 99px; padding: 2px 10px; font-size: .85rem; }
 .tag.ok { background: rgba(143,191,122,.15); color: var(--leaf); }
 .tag.sug { background: rgba(233,160,75,.13); color: var(--wing); }
@@ -201,6 +203,7 @@ function groupHtml(c) {
       ${sug && !done ? sugTag(sug, conf) : ""}
     </div>
     ${snd ? `<p class="sound">Sound type: ${esc(snd)}</p>` : ""}
+    ${c.unusual && !done && c.unusual * 2 >= ps.length ? unusualNote(c, ps) : ""}
     <div class="grid">${shown.map(passHtml).join("")}</div>
     ${ps.length > 8 ? `<p><button class="more" data-more="${c.id}">${expanded.has(c.id) ? "Show fewer" : `Show all ${ps.length} passes`}</button></p>` : ""}
     <div class="labelrow">
@@ -209,6 +212,11 @@ function groupHtml(c) {
       <button class="btn ghost" data-unknown="${c.id}" title="For bats that aren't in your library. WildWard learns to send similar passes here instead of guessing a wrong species.">Not in my library</button>
       ${done ? `<button class="btn ghost" data-clear="${c.id}">Clear labels</button>` : ""}
     </div></section>`;
+}
+
+function unusualNote(c, ps) {
+  const ex = ps.find(p => p.unusual).unusual;
+  return `<p class="unusual" role="note"><b>Unusual frequency</b> · ${c.unusual === ps.length ? (ps.length === 1 ? "This pass calls" : `All ${ps.length} passes call`) : `${c.unusual} of ${ps.length} passes call`} around ${c.unusual_khz} kHz, at least 5% from every constant-frequency species you know (closest: <i>${esc(ex.nearest)}</i>, ${ex.nearest_khz} kHz). It may be a species missing from your library, or one worth a closer look. Listen carefully and check before labelling.</p>`;
 }
 
 function sugTag(sug, conf) {
@@ -226,7 +234,7 @@ function passHtml(p) {
   return `<div class="pass ${off ? "off" : ""}">
     <input class="pick" type="checkbox" ${off ? "" : "checked"} data-pick="${p.id}" aria-label="Include pass ${p.id}">
     <img src="/media/${p.id}.png" alt="Spectrogram of pass ${p.id}" data-play="${p.id}" loading="lazy">
-    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""} ${who}</span>
+    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${p.unusual.f_khz} kHz, ${Math.round(p.unusual.gap * 100)}% from the closest known species">unusual</b>` : ""} ${who}</span>
       <button class="play" data-play="${p.id}" aria-label="Play pass ${p.id}, slowed down 10x">▶</button></div></div>`;
 }
 

@@ -20,6 +20,8 @@ from sklearn.preprocessing import StandardScaler
 from . import calls as callmod, detect, embed, media, reference as refmod, timestamps
 
 AUDIO_EXT = {".wav", ".WAV"}
+UNUSUAL_GAP = 0.05   # flag constant-frequency calls at least 5% from every known species' frequency
+MIN_CF_KHZ = 25.0
 
 
 class Survey:
@@ -50,6 +52,7 @@ class Survey:
                 self.reference = refmod.build(Path(self.reference_path), self.reference_te, progress=lambda m: None)
             except Exception:
                 self.reference = None
+        self.flag_unusual()   # surveys saved by older versions have no flags yet
 
     def save(self) -> None:
         self.dir.mkdir(exist_ok=True)
@@ -96,6 +99,7 @@ class Survey:
             owner = np.array(owner)
             self.emb = np.stack([W[owner == i].mean(axis=0) for i in range(len(passes))])
         self.cluster()
+        self.flag_unusual()
         self.save()
 
     def remake_media(self) -> None:
@@ -162,6 +166,7 @@ class Survey:
             w_parts.append(np.full(len(idx), 3.0))
         for p in self.passes:
             p["suggestion"], p["confidence"] = None, None
+        self.flag_unusual()
         if not X_parts:
             return
         X, y, w = np.concatenate(X_parts), np.concatenate(y_parts), np.concatenate(w_parts)
@@ -178,15 +183,63 @@ class Survey:
             k = int(pr.argmax())
             p["suggestion"], p["confidence"] = str(clf.classes_[k]), round(float(pr[k]), 3)
 
+    def known_frequencies(self) -> list[tuple[str, float]]:
+        """Frequency bands that known constant-frequency species (horseshoe and leaf-nosed bats) call in,
+        from the reference library and this survey's labels. Each species' passes are chained into bands
+        (neighbours within 5%); a band counts when it holds at least a third of that species' passes, so
+        stray calls in a reference file don't make a frequency "known", and a species with two bands keeps both."""
+        f_by = {}
+        if self.reference is not None and "F" in self.reference:
+            F = self.reference["F"]
+            for sp, fc, cf in zip(self.reference["y"], F[:, 0], F[:, -1]):
+                if cf == 1 and np.isfinite(fc):
+                    f_by.setdefault(str(sp), []).append(float(fc))
+        for p in self.passes:
+            m = p.get("measures") or {}
+            if p["label"] and m.get("shape") in ("CF", "CF-FM"):
+                f_by.setdefault(p["label"], []).append(float(m["f_char_khz"]))
+        bands = []
+        for sp, v in f_by.items():
+            v = sorted(v)
+            groups = [[v[0]]]
+            for f in v[1:]:
+                (groups[-1].append(f) if f - groups[-1][-1] <= 0.05 * f else groups.append([f]))
+            # a single reference pass still counts: it is all the library knows about that species
+            keep = [g for g in groups if len(g) >= max(2, len(v) / 3)] or [max(groups, key=len)]
+            bands += [(sp, float(np.median(g))) for g in keep]
+        return bands
+
+    def flag_unusual(self, min_gap: float = UNUSUAL_GAP) -> None:
+        """Flag constant-frequency passes whose call frequency is far from every known species.
+        Such a pass may be a species missing from the library, or one worth a closer look: several
+        cryptic South-East Asian bats were first noticed by calling at an unexpected frequency.
+        See batlab FINDINGS, Test 8, for how often this is right."""
+        known = self.known_frequencies()
+        for p in self.passes:
+            p["unusual"] = None
+            m = p.get("measures") or {}
+            if not known or p["label"] or m.get("shape") not in ("CF", "CF-FM") or m.get("n_calls", 0) < 3                     or (p.get("sound") or {}).get("type") == "unclear":
+                continue
+            fc = float(m["f_char_khz"])
+            if fc < MIN_CF_KHZ:   # no constant-frequency bat calls this low; a flat tone here is noise or insects
+                continue
+            nearest, nf = min(known, key=lambda k: abs(k[1] - fc))
+            gap = abs(nf - fc) / nf
+            if gap >= min_gap:
+                p["unusual"] = {"f_khz": round(fc, 1), "nearest": nearest, "nearest_khz": round(nf, 1), "gap": round(gap, 3)}
+
     def summary(self) -> dict:
         clusters = {}
         for p in self.passes:
             c = clusters.setdefault(p["cluster"], {"id": p["cluster"], "passes": [], "labels": {}, "suggestions": {},
-                                                   "sounds": {}, "conf": []})
+                                                   "sounds": {}, "conf": [], "unusual": 0, "unusual_khz": []})
             c["passes"].append(p["id"])
             sound = (p.get("sound") or {}).get("hint")
             if sound:
                 c["sounds"][sound] = c["sounds"].get(sound, 0) + 1
+            if p.get("unusual"):
+                c["unusual"] += 1
+                c["unusual_khz"].append(p["unusual"]["f_khz"])
             if p["label"]:
                 c["labels"][p["label"]] = c["labels"].get(p["label"], 0) + 1
             elif p["suggestion"]:
@@ -198,6 +251,7 @@ class Survey:
             unsure = 1 - (sum(c["conf"]) / len(c["conf"])) if c["conf"] else 1.0
             c["priority"] = round(unsure * (open_n ** 0.5), 3)
             del c["conf"]
+            c["unusual_khz"] = round(float(np.median(c["unusual_khz"])), 1) if c["unusual_khz"] else None
         activity = {}
         for p in self.passes:
             h = (p.get("time") or {}).get("hour")

@@ -19,7 +19,9 @@ def export(survey: Survey) -> dict:
         m = p.get("measures") or {}
         r.update({"time": (p.get("time") or {}).get("iso") or "", "call_shape": m.get("shape", ""),
                   "f_char_khz": m.get("f_char_khz", ""), "duration_ms": m.get("duration_ms", ""),
-                  "sound_type": (p.get("sound") or {}).get("type", "")})
+                  "sound_type": (p.get("sound") or {}).get("type", ""),
+                  "unusual_frequency": "yes" if p.get("unusual") else "",
+                  "nearest_known_species": (p.get("unusual") or {}).get("nearest", "")})
     csv_path = out / "passes.csv"
     with csv_path.open("w", newline="", encoding="utf8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]) if rows else ["file"])
@@ -45,6 +47,11 @@ def export(survey: Survey) -> dict:
         f"<tr><td><i>{html.escape(s)}</i></td><td>{reviewed.get(s, 0)}</td><td>{suggested.get(s, 0)}</td></tr>"
         for s in species)
     files = len({p["file"] for p in survey.passes})
+    odd = [p for p in survey.passes if p.get("unusual")]
+    odd_note = (f"<h2>Unusual frequencies</h2><p><b>{len(odd)}</b> unreviewed constant-frequency passes call at least 5% away from every "
+                f"known species' frequency (around {', '.join(sorted({f'{p["unusual"]["f_khz"]:.0f}' for p in odd}, key=float))} kHz). "
+                "They may be species missing from the reference library, or worth a closer look. Listed in passes.csv as "
+                "<code>unusual_frequency = yes</code>.</p>") if odd else ""
     page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Survey report</title>
 <style>body{{font:16px/1.5 system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 16px;color:#12201a}}
 h1{{margin:0 0 4px}}table{{border-collapse:collapse;width:100%;margin:16px 0}}td,th{{border-bottom:1px solid #ddd;padding:8px;text-align:left}}
@@ -53,6 +60,7 @@ h1{{margin:0 0 4px}}table{{border-collapse:collapse;width:100%;margin:16px 0}}td
 <p class="note">{html.escape(str(survey.folder))} · generated {datetime.now():%Y-%m-%d %H:%M} with WildWard Listen</p>
 <p><b>{len(survey.passes)}</b> bat passes in <b>{files}</b> recordings. <b>{sum(reviewed.values())}</b> reviewed by an expert,
 <b>{sum(suggested.values())}</b> suggested by the model and not yet reviewed, <b>{unknown}</b> unidentified.</p>
+{odd_note}
 <table><tr><th>Species</th><th>Reviewed passes</th><th>Suggested, unreviewed</th></tr>{table}</table>
 <p class="note">Suggestions come from a classifier trained on this survey's own reviewed passes. Treat unreviewed
 suggestions as leads, not identifications. Skipped files: {len(survey.skipped)}.</p></body></html>"""

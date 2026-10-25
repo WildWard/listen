@@ -13,6 +13,7 @@ Point it at a folder of bat-detector recordings. It finds every bat pass, measur
 - **Learns from your reference library**: point it at your own folder of identified calls (one sub-folder per species) and it suggests species with a confidence score from the first minute, before you label anything. Cached, so it only learns once.
 - **Learns from your labels**: every group you confirm retrains it in seconds, and your labels from this survey count more than the library. While it knows fewer than five species it only says which known species is closest, never a fake confidence score.
 - **Orders the review** so the groups that teach it the most come first.
+- **Flags unusual frequencies.** A horseshoe or leaf-nosed bat calling at least 5% away from every frequency your known species use gets marked *unusual*: it may be a species missing from your library, or one worth a closer look. Several cryptic Southeast Asian bats were first noticed this way. Tested on 49 species ([batlab Test 8](https://github.com/WildWard/batlab/blob/main/FINDINGS.md)): it flags about 4% of known-species passes recorded at new sites, and about half the passes of a hidden species that calls at its own distinct frequency. A newcomer calling close to a known species won't be flagged. Shown in the review, in `passes.csv` (`unusual_frequency`) and in the report.
 - **Shows bat activity through the night**, with times read from file names like `20261024_213000.wav` (AudioMoth, Song Meter and similar).
 - **Exports** `passes.csv`, `calls.csv` and `report.html` into the survey folder.
 
@@ -30,7 +31,7 @@ Tested on 237 identified recordings of 21 Malaysian bat species from the [ChiroV
 
 Measured call frequencies match published values, for example *Hipposideros cervinus* about 118 kHz, *Rhinolophus affinis* 73.5 kHz with 36 ms calls, *R. borneensis* 82.5 kHz, *Kerivoula* 2 ms steep sweeps.
 
-**Known limits:** it can't yet tell when a bat is a species missing from your library (tested, no method beat chance), so it suggests the closest species it knows; use the **Not in my library** button and it learns to route similar passes to Unknown; faint passes are marked "unclear" rather than guessed (about a quarter of the weaker passes in a test night); stray fragments that survive filtering are flagged `main_bat = no` in `calls.csv`; grouping mixes some similar species, so always listen before labelling; no pre-trained species model ships yet (see below).
+**Known limits:** apart from the unusual-frequency flag for constant-frequency bats, it can't tell when a bat is a species missing from your library, so it suggests the closest species it knows; a messy reference library (other bats in the background of reference files) can hide a newcomer from the flag; use the **Not in my library** button and it learns to route similar passes to Unknown; faint passes are marked "unclear" rather than guessed (about a quarter of the weaker passes in a test night); stray fragments that survive filtering are flagged `main_bat = no` in `calls.csv`; grouping mixes some similar species, so always listen before labelling; no pre-trained species model ships yet (see below).
 
 ## Run it
 
