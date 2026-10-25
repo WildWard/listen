@@ -22,6 +22,7 @@ from . import calls as callmod, detect, embed, media, reference as refmod, times
 AUDIO_EXT = {".wav", ".WAV"}
 UNUSUAL_GAP = 0.05   # flag constant-frequency calls at least 5% from every known species' frequency
 MIN_CF_KHZ = 25.0
+SURE = 0.7           # name a species at 70%+ confidence; below that, fall back to a confident genus
 
 
 class Survey:
@@ -52,7 +53,7 @@ class Survey:
                 self.reference = refmod.build(Path(self.reference_path), self.reference_te, progress=lambda m: None)
             except Exception:
                 self.reference = None
-        self.flag_unusual()   # surveys saved by older versions have no flags yet
+        self.suggest()   # refresh suggestions and flags: surveys saved by older versions lack genus and unusual fields
 
     def save(self) -> None:
         self.dir.mkdir(exist_ok=True)
@@ -165,7 +166,7 @@ class Survey:
             X_parts.append(own[idx]); y_parts.append(np.array([p["label"] for p in labelled]))
             w_parts.append(np.full(len(idx), 3.0))
         for p in self.passes:
-            p["suggestion"], p["confidence"] = None, None
+            p["suggestion"], p["confidence"], p["genus"], p["genus_confidence"] = None, None, None, None
         self.flag_unusual()
         if not X_parts:
             return
@@ -179,9 +180,18 @@ class Survey:
         if not todo:
             return
         proba = clf.predict_proba(own[[p["id"] for p in todo]])
+        # genus of each class: the first word of a binomial; one-word labels (genus or "Unknown") stand alone
+        genus_of = np.array([c.split()[0] for c in clf.classes_])
+        genera = np.unique(genus_of)
         for p, pr in zip(todo, proba):
             k = int(pr.argmax())
             p["suggestion"], p["confidence"] = str(clf.classes_[k]), round(float(pr[k]), 3)
+            # when the species is uncertain but the genus isn't, say the genus: at new sites this was
+            # right 94% of the time vs 80% for confident species calls (batlab accuracy_eval)
+            gp = np.array([pr[genus_of == g].sum() for g in genera])
+            g = int(gp.argmax())
+            p["genus"], p["genus_confidence"] = ((str(genera[g]), round(float(gp[g]), 3))
+                                                 if pr[k] < SURE and gp[g] >= SURE else (None, None))
 
     def known_frequencies(self) -> list[tuple[str, float]]:
         """Frequency bands that known constant-frequency species (horseshoe and leaf-nosed bats) call in,

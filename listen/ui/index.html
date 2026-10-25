@@ -200,7 +200,7 @@ function groupHtml(c) {
     <div class="chead"><h2>Group ${c.id + 1}</h2>
       <span class="meta">${ps.length} passes${ms.length ? ` · calls around ${fc.toFixed(1)} kHz, ${dur.toFixed(1)} ms` : ""}</span>
       ${lab ? `<span class="tag ok">${esc(lab)}</span>` : ""}
-      ${sug && !done ? sugTag(sug, conf) : ""}
+      ${sug && !done ? sugTag(sug, conf, ps) : ""}
     </div>
     ${snd ? `<p class="sound">Sound type: ${esc(snd)}</p>` : ""}
     ${c.unusual && !done && c.unusual * 2 >= ps.length ? unusualNote(c, ps) : ""}
@@ -219,17 +219,23 @@ function unusualNote(c, ps) {
   return `<p class="unusual" role="note"><b>Unusual frequency</b> · ${c.unusual === ps.length ? (ps.length === 1 ? "This pass calls" : `All ${ps.length} passes call`) : `${c.unusual} of ${ps.length} passes call`} around ${c.unusual_khz} kHz, at least 5% from every constant-frequency species you know (closest: <i>${esc(ex.nearest)}</i>, ${ex.nearest_khz} kHz). It may be a species missing from your library, or one worth a closer look. Listen carefully and check before labelling.</p>`;
 }
 
-function sugTag(sug, conf) {
+function sugTag(sug, conf, ps) {
   // with only a few labelled species every call gets forced into one of them, so a percentage would be fake
   const n = (survey.known_species || []).length;
-  return n < 5
-    ? `<span class="tag sug" title="The model can only pick between species it knows">closest of the ${n} species it knows: ${esc(sug)}</span>`
-    : `<span class="tag sug" title="Model suggestion, not reviewed">suggested: ${esc(sug)} · ${(conf * 100).toFixed(0)}%</span>`;
+  if (n < 5) return `<span class="tag sug" title="The model can only pick between species it knows">closest of the ${n} species it knows: ${esc(sug)}</span>`;
+  // unsure of the species but sure of the genus: say the genus instead of a likely-wrong species
+  const open = ps.filter(p => !p.label), counts = {};
+  open.filter(p => p.genus).forEach(p => { counts[p.genus] = (counts[p.genus] || 0) + 1; });
+  const g = topKey(counts);
+  const gs = open.filter(p => p.genus && p.genus === g);
+  if (conf < 0.7 && g && gs.length * 2 >= open.length)
+    return `<span class="tag sug" title="Not sure of the species, but sure of the genus. Best species guess: ${esc(sug)} (${(conf * 100).toFixed(0)}%)">probably <i>${esc(g)}</i> (genus) · ${(mean(gs.map(p => p.genus_confidence)) * 100).toFixed(0)}%</span>`;
+  return `<span class="tag sug" title="Model suggestion, not reviewed">suggested: ${esc(sug)} · ${(conf * 100).toFixed(0)}%${conf < 0.7 ? " (unsure)" : ""}</span>`;
 }
 
 function passHtml(p) {
   const off = unpicked.has(p.id);
-  const who = p.label ? `<span class="lab">${esc(p.label)}</span>` : p.suggestion ? `<span class="sg">${esc(p.suggestion)}?</span>` : "";
+  const who = p.label ? `<span class="lab">${esc(p.label)}</span>` : p.genus ? `<span class="sg">${esc(p.genus)} sp.?</span>` : p.suggestion ? `<span class="sg">${esc(p.suggestion)}?</span>` : "";
   const m = p.measures || {};
   return `<div class="pass ${off ? "off" : ""}">
     <input class="pick" type="checkbox" ${off ? "" : "checked"} data-pick="${p.id}" aria-label="Include pass ${p.id}">

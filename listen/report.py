@@ -11,7 +11,7 @@ def export(survey: Survey) -> dict:
     out = survey.dir
     rows = []
     for p in survey.passes:
-        species = p["label"] or p["suggestion"] or ""
+        species = p["label"] or (f'{p["genus"]} sp.' if p.get("genus") else p["suggestion"]) or ""
         rows.append({"file": p["file"], "start_s": p["start"], "end_s": p["end"], "peak_khz": p["peak_khz"],
                      "species": species, "reviewed": "yes" if p["label"] else "no",
                      "confidence": "" if p["label"] else (p["confidence"] or ""), "cluster": p["cluster"]})
