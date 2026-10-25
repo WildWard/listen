@@ -15,7 +15,12 @@ Point it at a folder of bat-detector recordings. It finds every bat pass, measur
 - **Orders the review** so the groups that teach it the most come first.
 - **Flags unusual frequencies.** A horseshoe or leaf-nosed bat calling at least 5% away from every frequency your known species use gets marked *unusual*: it may be a species missing from your library, or one worth a closer look. Several cryptic Southeast Asian bats were first noticed this way. Tested on 49 species ([batlab Test 8](https://github.com/WildWard/batlab/blob/main/FINDINGS.md)): it flags about 4% of known-species passes recorded at new sites, and about half the passes of a hidden species that calls at its own distinct frequency. A newcomer calling close to a known species won't be flagged. Shown in the review, in `passes.csv` (`unusual_frequency`) and in the report.
 - **Shows bat activity through the night**, with times read from file names like `20261024_213000.wav` (AudioMoth, Song Meter and similar).
-- **Exports** `passes.csv`, `calls.csv` and `report.html` into the survey folder.
+- **Says the genus when the species is unsure.** If it isn't 70% sure of the species but is of the genus, it shows "probably *Hipposideros* (genus)" instead of a likely-wrong species. At recording sites the model had never heard, confident species calls were 80% right and genus fallbacks 94% right ([batlab Test 9](https://github.com/WildWard/batlab/blob/main/FINDINGS.md)).
+- **Reads detector metadata.** GPS position, time and device from GUANO (Song Meter, Pettersson and others) and AudioMoth's own comments, so times don't depend on file names.
+- **Sites & nights.** An offline map of detector positions and activity night by night across a whole survey.
+- **Wind-site view.** Activity of open-air foragers by hour and night: the bats found flying at turbine height in Southeast Asia (free-tailed, sheath-tailed, house bats and relatives).
+- **Speaks your language.** English, Bahasa Indonesia, Bahasa Melayu, Tiếng Việt, ไทย and Filipino (first-draft translations, corrections welcome).
+- **Exports** `passes.csv`, `calls.csv`, `report.html` and `occurrences.csv` into the survey folder. `occurrences.csv` is Darwin Core, ready to publish to GBIF, and holds only passes an expert reviewed.
 
 ## How well does it work? (honest numbers)
 
@@ -40,6 +45,14 @@ Measured call frequencies match published values, for example *Hipposideros cerv
 3. Double-click **WildWard Listen** on your desktop. It opens in your browser. From then on it works fully offline.
 
 To uninstall, delete the folder and the desktop shortcut.
+
+## Install on a Mac (Apple Silicon, M1 or newer)
+
+1. Download the ZIP as above and unzip it.
+2. Right-click **`install-mac.command`** and choose **Open** (the first time macOS asks you to confirm a downloaded script). It installs everything inside that folder, like the Windows installer.
+3. Double-click **`WildWard Listen.command`** to start.
+
+Not yet tested on a real Mac: if anything goes wrong, email wildward.org@gmail.com. Intel Macs aren't supported, because TensorFlow (which runs the Perch model) only ships Mac builds for Apple Silicon.
 
 ## Run it (Python users)
 
