@@ -33,7 +33,15 @@ Measured call frequencies match published values, for example *Hipposideros cerv
 
 **Known limits:** apart from the unusual-frequency flag for constant-frequency bats, it can't tell when a bat is a species missing from your library, so it suggests the closest species it knows; a messy reference library (other bats in the background of reference files) can hide a newcomer from the flag; use the **Not in my library** button and it learns to route similar passes to Unknown; faint passes are marked "unclear" rather than guessed (about a quarter of the weaker passes in a test night); stray fragments that survive filtering are flagged `main_bat = no` in `calls.csv`; grouping mixes some similar species, so always listen before labelling; no pre-trained species model ships yet (see below).
 
-## Run it
+## Install on Windows (no Python needed)
+
+1. On the [GitHub page](https://github.com/WildWard/listen), click **Code → Download ZIP** and unzip it somewhere permanent, e.g. `Documents\WildWard Listen`.
+2. Double-click **`Install WildWard Listen.bat`**. It sets up a private copy of Python and everything Listen needs inside that folder, then downloads the Perch 2.0 sound model. No admin rights, nothing installed system-wide. It needs internet once, about 1 GB, and takes 5-15 minutes.
+3. Double-click **WildWard Listen** on your desktop. It opens in your browser. From then on it works fully offline.
+
+To uninstall, delete the folder and the desktop shortcut.
+
+## Run it (Python users)
 
 Python 3.12, works on a normal laptop CPU.
 
