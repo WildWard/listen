@@ -173,9 +173,10 @@ function render() {
   $("#nReviewed").textContent = reviewed.toLocaleString();
   $("#progress").style.width = (P.length ? 100 * reviewed / P.length : 0) + "%";
   $("#species").innerHTML = [...new Set(P.map(p => p.label).filter(Boolean))].sort().map(l => `<option value="${esc(l)}">`).join("");
-  const tabs = [["todo", "To review"], ["all", "All groups"], ["done", "Reviewed"], ["night", "Night activity"]];
+  const tabs = [["todo", "To review"], ["all", "All groups"], ["done", "Reviewed"], ["night", "Night activity"], ["season", "Sites & nights"]];
   let body = `<div class="tabs" role="group" aria-label="View">${tabs.map(([k, l]) => `<button data-view="${k}" aria-pressed="${view === k}">${l}</button>`).join("")}</div>`;
   if (view === "night") { $("#main").innerHTML = body + nightHtml(); return; }
+  if (view === "season") { $("#main").innerHTML = body + seasonHtml(); return; }
   body += `<p class="hint">Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once. ${view === "todo" ? "Groups are ordered so the ones that teach WildWard the most come first." : ""} ${survey.reference ? `Species suggestions come from your reference library (${survey.reference.species} species) plus your labels.` : "Add a reference library, or label two species, and WildWard starts suggesting species for the rest."} It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming, and use "Not in my library" for bats it doesn't know. It learns from that too. Confidence scores appear once it knows five species.</p>`;
   let groups = survey.clusters.filter(c => {
     const done = c.passes.every(i => P[i].label);
@@ -272,6 +273,55 @@ function nightHtml() {
     <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(g)}</span>`).join("")}</div></section>
     <section class="panel"><h2>Summary</h2><table class="sum"><tr><th>Group</th><th>Passes</th></tr>
     ${totals.map(([g, n]) => `<tr><td>${esc(g)}</td><td>${n}</td></tr>`).join("")}</table></section>`;
+}
+
+function seasonHtml() {
+  const sites = survey.sites || [], nights = survey.nights || [];
+  let out = "";
+  const located = sites.filter(s => s.lat != null);
+  if (located.length) {
+    // offline "map": detector positions scaled to their bounding box, north up
+    const lats = located.map(s => s.lat), lons = located.map(s => s.lon);
+    const [la0, la1, lo0, lo1] = [Math.min(...lats), Math.max(...lats), Math.min(...lons), Math.max(...lons)];
+    const W = 760, H = 300, pad = 50, span = Math.max(la1 - la0, (lo1 - lo0) * Math.cos(la0 * Math.PI / 180), 0.002);
+    const sx = lo => pad + (W - 2 * pad) * ((lo - lo0) * Math.cos(la0 * Math.PI / 180)) / span;
+    const sy = la => H - pad - (H - 2 * pad) * (la - la0) / span;
+    const maxP = Math.max(1, ...located.map(s => s.passes));
+    const dots = located.map(s => `<g><circle cx="${sx(s.lon).toFixed(1)}" cy="${sy(s.lat).toFixed(1)}" r="${(6 + 14 * Math.sqrt(s.passes / maxP)).toFixed(1)}" style="fill:var(--wing);fill-opacity:.75"><title>${esc(s.id)}: ${s.passes} passes</title></circle>
+      <text x="${(sx(s.lon) + 12).toFixed(1)}" y="${(sy(s.lat) - 12).toFixed(1)}" fill="#cdd6cf" font-size="22">${esc(String(s.id).slice(-6))}</text></g>`).join("");
+    const km = (span * 111).toFixed(span * 111 < 10 ? 1 : 0);
+    out += `<section class="panel"><h2>Detector sites</h2>
+      <p class="hint">From GPS positions stored in the recordings (GUANO metadata). Dot size = bat passes. The area shown is about ${km} km across. Works offline, no map tiles.</p>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Detector positions">${dots}</svg></section>`;
+  }
+  if (sites.length) {
+    out += `<section class="panel"><h2>Sites</h2><div style="overflow-x:auto"><table class="sum"><tr><th>Detector</th><th>Position</th><th>Device</th><th>Files</th><th>Passes</th><th>Most common</th></tr>
+      ${sites.map(s => `<tr><td>${esc(s.id)}</td><td>${s.lat != null ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : "-"}</td><td>${esc(s.device || "")}</td><td>${s.files}</td><td>${s.passes}</td><td>${esc(topKey(s.groups) || "")}</td></tr>`).join("")}</table></div></section>`;
+  } else {
+    out += `<p class="empty">No detector positions found in these recordings. Song Meter, Pettersson and other detectors that write GUANO metadata with GPS show up here automatically.</p>`;
+  }
+  if (nights.length) {
+    const groups = [...new Set(nights.flatMap(n => Object.keys(n.groups)))];
+    const col = g => COLORS[groups.indexOf(g) % COLORS.length];
+    const max = Math.max(...nights.map(n => n.passes)), W = 760, H = 220;
+    const bw = Math.max(6, Math.min(40, (W - 40) / nights.length - 4));
+    let x = 30, bars = "";
+    for (const n of nights) {
+      let y = H - 24;
+      for (const g of groups) {
+        const v = n.groups[g] || 0; if (!v) continue;
+        const hh = (H - 40) * v / max; y -= hh;
+        bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>night of ${n.night} · ${esc(g)}: ${v}</title></rect>`;
+      }
+      if (nights.length <= 31) bars += `<text x="${x + bw / 2}" y="${H - 8}" fill="#9fb0a6" font-size="10" text-anchor="middle">${n.night.slice(5)}</text>`;
+      x += bw + 4;
+    }
+    out += `<section class="panel"><h2>Activity night by night</h2>
+      <p class="hint">Passes per night (noon to noon), coloured by your labels, or by sound type where nothing is labelled yet. ${nights.length} night${nights.length > 1 ? "s" : ""}: ${nights[0].night} to ${nights[nights.length - 1].night}.</p>
+      <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Bat passes per night">${bars}</svg>
+      <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(g)}</span>`).join("")}</div></section>`;
+  }
+  return out;
 }
 
 document.addEventListener("click", async e => {

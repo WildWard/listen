@@ -1,4 +1,4 @@
-"""When was each pass recorded? Read it from common detector file names, else the file's date."""
+"""When was each pass recorded? From the detector's own metadata, else common file names, else the file's date."""
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -10,8 +10,11 @@ _PATTERNS = [
 ]
 
 
-def recording_start(path: Path) -> tuple[str | None, str]:
-    """(ISO time or None, source) where source is 'filename', 'file date' or 'unknown'."""
+def recording_start(path: Path, meta: dict | None = None) -> tuple[str | None, str]:
+    """(ISO time or None, source) where source is the metadata format, 'filename', 'file date' or 'unknown'.
+    Times written by the detector itself (GUANO, AudioMoth) beat the file name, which can be renamed."""
+    if meta and meta.get("time"):
+        return meta["time"], f"{meta.get('format', 'file')} metadata"
     for rx, fmt in _PATTERNS:
         m = rx.search(path.stem)
         if m:

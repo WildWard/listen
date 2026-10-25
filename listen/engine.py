@@ -7,6 +7,7 @@ Everything is saved in <folder>/.wildward/ so work survives closing the app:
 """
 import json
 import time
+from datetime import datetime, timedelta
 from dataclasses import asdict
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
-from . import calls as callmod, detect, embed, media, reference as refmod, timestamps
+from . import calls as callmod, detect, embed, media, metadata, reference as refmod, timestamps
 
 AUDIO_EXT = {".wav", ".WAV"}
 UNUSUAL_GAP = 0.05   # flag constant-frequency calls at least 5% from every known species' frequency
@@ -35,6 +36,7 @@ class Survey:
         self.passes: list[dict] = []
         self.emb = np.zeros((0, 1536), np.float32)
         self.skipped: list[dict] = []
+        self.files_meta: dict[str, dict] = {}   # detector metadata per recording (GPS, device, time)
         self.reference_path: str | None = None
         self.reference_te = 1
         self.reference: dict | None = None
@@ -45,6 +47,7 @@ class Survey:
     def _load(self) -> None:
         s = json.loads(self.state_path.read_text(encoding="utf8"))
         self.passes, self.skipped = s["passes"], s.get("skipped", [])
+        self.files_meta = s.get("files_meta", {})
         self.time_expansion = s.get("time_expansion", self.time_expansion)
         self.emb = np.load(self.dir / "embeddings.npy")
         self.reference_path, self.reference_te = s.get("reference_path"), s.get("reference_te", 1)
@@ -59,6 +62,7 @@ class Survey:
         self.dir.mkdir(exist_ok=True)
         self.state_path.write_text(json.dumps({"passes": self.passes, "skipped": self.skipped,
                                                "time_expansion": self.time_expansion, "reference_path": self.reference_path,
+                                               "files_meta": self.files_meta,
                                                "reference_te": self.reference_te, "saved": time.time()},
                                               indent=1), encoding="utf8")
         np.save(self.dir / "embeddings.npy", self.emb)
@@ -69,6 +73,7 @@ class Survey:
         files = sorted(p for p in self.folder.rglob("*") if p.suffix in AUDIO_EXT and ".wildward" not in p.parts)
         self.media.mkdir(parents=True, exist_ok=True)
         passes, windows, owner = [], [], []
+        self.files_meta = {}
         for n, f in enumerate(files, 1):
             rel = str(f.relative_to(self.folder))
             try:
@@ -76,7 +81,10 @@ class Survey:
             except Exception as e:  # unreadable or wrong rate: report it, keep going
                 self.skipped.append({"file": rel, "reason": str(e)})
                 continue
-            file_time = timestamps.recording_start(f)
+            meta = metadata.read(f)
+            if meta:
+                self.files_meta[rel] = meta
+            file_time = timestamps.recording_start(f, meta)
             for p in detect.find_passes(x, rel):
                 pid = len(passes)
                 clip = x[int(p.start * detect.SR): int(p.end * detect.SR)]
@@ -238,6 +246,44 @@ class Survey:
             if gap >= min_gap:
                 p["unusual"] = {"f_khz": round(fc, 1), "nearest": nearest, "nearest_khz": round(nf, 1), "gap": round(gap, 3)}
 
+    def who(self, p: dict) -> str:
+        """What to call a pass in charts: the expert's label, else its broad sound type."""
+        return p["label"] or (p.get("sound") or {}).get("hint", "unclear").split(" (")[0].replace("typical of ", "")
+
+    def sites_and_nights(self) -> tuple[list[dict], list[dict]]:
+        """Detector sites (from GUANO / AudioMoth metadata) and activity per night across the survey.
+        A night runs noon to noon, so passes after midnight count with the evening they started."""
+        sites = {}
+        for rel, m in self.files_meta.items():
+            if "lat" in m:
+                key = m.get("serial") or f"{m['lat']:.4f},{m['lon']:.4f}"
+            elif m.get("serial"):
+                key = m["serial"]
+            else:
+                continue
+            s = sites.setdefault(key, {"id": key, "lat": m.get("lat"), "lon": m.get("lon"), "device": m.get("device"),
+                                       "files": 0, "passes": 0, "groups": {}})
+            s["files"] += 1
+        file_site = {rel: (m.get("serial") or (f"{m['lat']:.4f},{m['lon']:.4f}" if "lat" in m else None))
+                     for rel, m in self.files_meta.items()}
+        nights = {}
+        for p in self.passes:
+            g = self.who(p)
+            key = file_site.get(p["file"])
+            if key in sites:
+                sites[key]["passes"] += 1
+                sites[key]["groups"][g] = sites[key]["groups"].get(g, 0) + 1
+            iso = (p.get("time") or {}).get("iso")
+            if not iso:
+                continue
+            night = (datetime.fromisoformat(iso) - timedelta(hours=12)).date().isoformat()
+            n = nights.setdefault(night, {"night": night, "passes": 0, "groups": {}, "sites": {}})
+            n["passes"] += 1
+            n["groups"][g] = n["groups"].get(g, 0) + 1
+            if key in sites:
+                n["sites"][key] = n["sites"].get(key, 0) + 1
+        return list(sites.values()), sorted(nights.values(), key=lambda n: n["night"])
+
     def summary(self) -> dict:
         clusters = {}
         for p in self.passes:
@@ -266,14 +312,15 @@ class Survey:
         for p in self.passes:
             h = (p.get("time") or {}).get("hour")
             if h is not None:
-                who = p["label"] or (p.get("sound") or {}).get("hint", "unclear").split(" (")[0].replace("typical of ", "")
+                who = self.who(p)
                 activity.setdefault(h, {})
                 activity[h][who] = activity[h].get(who, 0) + 1
         sources = {(p.get("time") or {}).get("source") for p in self.passes}
+        sites, nights = self.sites_and_nights()
         return {"folder": str(self.folder), "time_expansion": self.time_expansion,
                 "passes": [{k: v for k, v in p.items() if k != "calls"} for p in self.passes],
                 "clusters": sorted(clusters.values(), key=lambda c: c["id"]), "skipped": self.skipped,
                 "activity": activity, "time_source": sorted(s for s in sources if s),
-                "known_species": self.known_species(),
+                "known_species": self.known_species(), "sites": sites, "nights": nights,
                 "reference": {"path": self.reference_path, "species": len(self.reference["species"]),
                               "passes": int(len(self.reference["y"]))} if self.reference else None}
