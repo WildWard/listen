@@ -32,7 +32,7 @@ Tested on 237 identified recordings of 21 Malaysian bat species from the [ChiroV
 | Recordings where at least one bat pass is found | 60 of 60 in a sample, at the species' known call frequencies |
 | Sound type points to the right bat family, no labels at all | **78%** overall (184 of 237): leaf-nosed 85%, woolly 83%, horseshoe 73%, vesper 92%, free-tailed 75% |
 | Slit-faced bats (*Nycteris*) | 0 of 12, there is no rule for their faint calls yet |
-| Species, with labels (see [batlab](https://github.com/WildWard/batlab)) | 81% species / 92% genus; 53% / 84% on recording sites never seen in training |
+| Species, with labels (see [batlab](https://github.com/WildWard/batlab), 91 species from Vietnam, Malaysia and Indonesia) | 78% species / 90% genus; 63% / 82% on recording sites never seen in training (49 species) |
 | Species from a reference library only, zero labels, on a 48-recording test night (125 passes, no overlap with the library) | 53% species / 71% genus; when it says 80% or more, it is right 82% of the time |
 
 Measured call frequencies match published values, for example *Hipposideros cervinus* about 118 kHz, *Rhinolophus affinis* 73.5 kHz with 36 ms calls, *R. borneensis* 82.5 kHz, *Kerivoula* 2 ms steep sweeps.
