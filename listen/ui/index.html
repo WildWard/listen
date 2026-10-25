@@ -34,6 +34,7 @@ main { padding: 20px 24px 80px; max-width: 1400px; margin: 0 auto; }
 .chead h2 { margin: 0; font-size: 1.05rem; }
 .meta { color: var(--fog); font-size: .9rem; }
 .sound { color: var(--sky); font-size: .9rem; margin: 0 0 12px; }
+.selfcheck { border-left: 3px solid var(--leaf); padding-left: 12px; color: var(--bone); }
 .unusual { border-left: 3px solid var(--wing); background: rgba(233,160,75,.1); padding: 10px 14px; border-radius: 6px; font-size: .9rem; margin: 0 0 14px; }
 .odd { color: var(--wing); font-weight: 600; }
 .tag { border-radius: 99px; padding: 2px 10px; font-size: .85rem; }
@@ -208,7 +209,8 @@ function render() {
   let body = `<div class="tabs" role="group" aria-label="View">${tabs.map(([k, l]) => `<button data-view="${k}" aria-pressed="${view === k}">${t(l)}</button>`).join("")}</div>`;
   if (view === "night") { $("#main").innerHTML = body + nightHtml(); return; }
   if (view === "season") { $("#main").innerHTML = body + seasonHtml(); return; }
-  body += `<p class="hint">${t("Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once.")} ${view === "todo" ? t("Groups are ordered so the ones that teach WildWard the most come first.") : ""} ${survey.reference ? t("Species suggestions come from your reference library ({0} species) plus your labels.", survey.reference.species) : t("Add a reference library, or label two species, and WildWard starts suggesting species for the rest.")} ${t("It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming, and use \"Not in my library\" for bats it doesn't know. It learns from that too. Confidence scores appear once it knows five species.")}</p>`;
+  body += `<p class="hint">${t("Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once.")} ${view === "todo" ? t("Groups are ordered so the ones that teach WildWard the most come first.") : ""} ${survey.reference ? t("Species suggestions come from your reference library ({0} species) plus your labels.", survey.reference.species) : t("Add a reference library, or label two species, and WildWard starts suggesting species for the rest.")} ${t("It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming, and use \"Not in my library\" for bats it doesn't know. It learns from that too. Confidence scores appear once it knows five species.")}</p>
+  ${selfCheckHtml()}`;
   let groups = survey.clusters.filter(c => {
     const done = c.passes.every(i => P[i].label);
     return view === "all" || (view === "done" ? done : !done);
@@ -244,6 +246,14 @@ function groupHtml(c) {
       <button class="btn ghost" data-unknown="${c.id}" title="${t("For bats that aren't in your library. WildWard learns to send similar passes here instead of guessing a wrong species.")}">${t("Not in my library")}</button>
       ${done ? `<button class="btn ghost" data-clear="${c.id}">${t("Clear labels")}</button>` : ""}
     </div></section>`;
+}
+
+function selfCheckHtml() {
+  const s = survey.self_check;
+  const base = t("Confidence comes from tests on library recordings at sites the model had never heard. On a real survey night it ran high: shown 80% was right about 60% of the time. Always listen before confirming.");
+  if (!s || s.n < 10) return `<p class="hint">${base}</p>`;
+  const pct = (a, b) => Math.round(100 * a / b);
+  return `<p class="hint selfcheck">${t("Checked against your labels in this survey: Listen's suggestion was right for {0} of {1} passes ({2}%), and the genus for {3}%.", s.right, s.n, pct(s.right, s.n), pct(s.genus_right, s.n))}${s.n_sure >= 5 ? " " + t("When it was 70%+ sure: {0}% right.", pct(s.right_sure, s.n_sure)) : ""}</p>`;
 }
 
 function unusualNote(c, ps) {

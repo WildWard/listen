@@ -30,6 +30,22 @@ OPEN_AIR_GENERA = {"Mops", "Chaerephon", "Tadarida", "Cheiromeles", "Taphozous",
                    "Miniopterus", "Pipistrellus", "Hypsugo", "Scotozous", "Ia"}
 OPEN_AIR_SPECIES = {"Myotis siligorensis"}
 OPEN_AIR_SOUNDS = ("free-tailed or sheath-tailed",)   # unlabelled passes whose call shape points to this group
+# Confidence calibration (batlab tools/calibrate_listen.py): maps the classifier's raw top probability to how
+# often such an answer was right at recording sites the model had never heard, so "80%" means right ~80% of the time.
+_CAL = json.loads((Path(__file__).parent / "calibration.json").read_text(encoding="utf8")) \
+    if (Path(__file__).parent / "calibration.json").exists() else {}
+
+
+def calibrated(raw: float, kind: str) -> float:
+    """Never raises a confidence, only lowers it where tests showed the model overconfident: real survey
+    passes are messier than the library recordings the calibration was measured on."""
+    pts = (_CAL.get("large") or _CAL).get(kind)
+    if not pts:
+        return raw
+    xs, ys = zip(*pts)
+    return min(raw, float(np.interp(raw, xs, ys)))
+
+
 SURE = 0.7           # name a species at 70%+ confidence; below that, fall back to a confident genus
 
 
@@ -146,8 +162,17 @@ class Survey:
 
     # ---------- review ----------
     def label(self, pass_ids: list[int], label: str | None) -> None:
+        label = (label or "").strip() or None
         for i in pass_ids:
-            self.passes[i]["label"] = (label or "").strip() or None
+            p = self.passes[i]
+            # remember what Listen suggested before the expert decided: that's how it checks itself on this survey
+            if label and not p["label"] and p.get("suggestion") and not label.lower().startswith("unknown"):
+                p["check"] = {"suggested": p["suggestion"], "confidence": p["confidence"],
+                              "right": p["suggestion"] == label,
+                              "genus_right": p["suggestion"].split()[0] == label.split()[0]}
+            elif not label:
+                p.pop("check", None)
+            p["label"] = label
         self.suggest()
         self.save()
 
@@ -200,13 +225,14 @@ class Survey:
         genera = np.unique(genus_of)
         for p, pr in zip(todo, proba):
             k = int(pr.argmax())
-            p["suggestion"], p["confidence"] = str(clf.classes_[k]), round(float(pr[k]), 3)
+            p["suggestion"], p["confidence"] = str(clf.classes_[k]), round(calibrated(float(pr[k]), "species"), 3)
             # when the species is uncertain but the genus isn't, say the genus: at new sites this was
             # right 94% of the time vs 80% for confident species calls (batlab accuracy_eval)
             gp = np.array([pr[genus_of == g].sum() for g in genera])
             g = int(gp.argmax())
-            p["genus"], p["genus_confidence"] = ((str(genera[g]), round(float(gp[g]), 3))
-                                                 if pr[k] < SURE and gp[g] >= SURE else (None, None))
+            g_conf = calibrated(float(gp[g]), "genus")
+            p["genus"], p["genus_confidence"] = ((str(genera[g]), round(g_conf, 3))
+                                                 if p["confidence"] < SURE and g_conf >= SURE else (None, None))
 
     def known_frequencies(self) -> list[tuple[str, float]]:
         """Frequency bands that known constant-frequency species (horseshoe and leaf-nosed bats) call in,
@@ -317,6 +343,15 @@ class Survey:
                 n["sites"][key] = n["sites"].get(key, 0) + 1
         return list(sites.values()), sorted(nights.values(), key=lambda n: n["night"])
 
+    def self_check(self) -> dict | None:
+        """How often Listen's suggestions matched what the expert then labelled, in this survey."""
+        checks = [p["check"] for p in self.passes if p.get("check") and p["label"]]
+        if not checks:
+            return None
+        sure = [c for c in checks if (c.get("confidence") or 0) >= SURE]
+        return {"n": len(checks), "right": sum(c["right"] for c in checks), "genus_right": sum(c["genus_right"] for c in checks),
+                "n_sure": len(sure), "right_sure": sum(c["right"] for c in sure)}
+
     def summary(self) -> dict:
         clusters = {}
         for p in self.passes:
@@ -355,5 +390,6 @@ class Survey:
                 "clusters": sorted(clusters.values(), key=lambda c: c["id"]), "skipped": self.skipped,
                 "activity": activity, "time_source": sorted(s for s in sources if s),
                 "known_species": self.known_species(), "sites": sites, "nights": nights, "wind": self.wind_risk(),
+                "self_check": self.self_check(),
                 "reference": {"path": self.reference_path, "species": len(self.reference["species"]),
                               "passes": int(len(self.reference["y"]))} if self.reference else None}

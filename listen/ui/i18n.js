@@ -79,6 +79,19 @@ const I18N = {
     vi: "Nó chỉ gợi ý được những loài nó biết, nên dơi không có trong thư viện sẽ bị gán loài gần nhất: luôn nghe trước khi xác nhận, và dùng \"Không có trong thư viện\" cho dơi nó không biết. Nó cũng học từ đó. Điểm tin cậy xuất hiện khi nó biết năm loài.",
     th: "ระบบแนะนำได้เฉพาะชนิดที่รู้จัก ค้างคาวที่ไม่มีในคลังจะถูกจับคู่กับชนิดที่ใกล้ที่สุด จึงควรฟังก่อนยืนยันเสมอ และใช้ปุ่ม \"ไม่มีในคลัง\" สำหรับค้างคาวที่ระบบไม่รู้จัก ระบบเรียนรู้จากสิ่งนี้ด้วย คะแนนความมั่นใจจะแสดงเมื่อรู้จักห้าชนิดขึ้นไป",
     fil: "Species lang na kilala nito ang maimumungkahi nito, kaya ang paniking wala sa aklatan ay bibigyan ng pinakamalapit na kilalang species: laging makinig bago kumpirmahin, at gamitin ang \"Wala sa aklatan ko\" para sa paniking hindi nito kilala. Natututo rin ito mula roon. Lalabas ang confidence score kapag lima na ang kilala nitong species." },
+  "Confidence comes from tests on library recordings at sites the model had never heard. On a real survey night it ran high: shown 80% was right about 60% of the time. Always listen before confirming.": {
+    id: "Skor keyakinan berasal dari uji pada rekaman pustaka di lokasi yang belum pernah didengar model. Pada malam survei sungguhan skornya terlalu tinggi: 80% yang ditampilkan benar sekitar 60% kali. Selalu dengarkan sebelum mengonfirmasi.",
+    ms: "Skor keyakinan datang daripada ujian pada rakaman pustaka di lokasi yang belum pernah didengar model. Pada malam tinjauan sebenar skornya terlalu tinggi: 80% yang dipaparkan betul kira-kira 60% masa. Sentiasa dengar sebelum mengesahkan.",
+    vi: "Điểm tin cậy đến từ thử nghiệm trên bản ghi thư viện tại những nơi mô hình chưa từng nghe. Trong một đêm khảo sát thật, điểm này cao hơn thực tế: 80% hiển thị chỉ đúng khoảng 60%. Hãy luôn nghe trước khi xác nhận.",
+    th: "คะแนนความมั่นใจมาจากการทดสอบกับเสียงในคลังที่จุดซึ่งระบบไม่เคยได้ยิน ในคืนสำรวจจริงคะแนนสูงเกินจริง: ที่แสดง 80% ถูกราว 60% ฟังก่อนยืนยันเสมอ",
+    fil: "Galing ang confidence sa mga pagsubok sa mga recording ng aklatan sa mga lugar na hindi pa naririnig ng modelo. Sa totoong gabi ng survey, mataas ito: ang ipinakitang 80% ay tama nang mga 60% lang. Laging makinig bago kumpirmahin." },
+  "Checked against your labels in this survey: Listen's suggestion was right for {0} of {1} passes ({2}%), and the genus for {3}%.": {
+    id: "Dicek terhadap label Anda di survei ini: saran Listen benar untuk {0} dari {1} lintasan ({2}%), dan genusnya {3}%.",
+    ms: "Disemak dengan label anda dalam tinjauan ini: cadangan Listen betul untuk {0} daripada {1} laluan ({2}%), dan genusnya {3}%.",
+    vi: "Đối chiếu với nhãn của bạn trong khảo sát này: gợi ý của Listen đúng {0} trên {1} lượt ({2}%), và đúng chi {3}%.",
+    th: "ตรวจกับป้ายของคุณในการสำรวจนี้: Listen แนะนำถูก {0} จาก {1} ครั้ง ({2}%) และถูกสกุล {3}%",
+    fil: "Sinuri laban sa mga label mo sa survey na ito: tama ang mungkahi ng Listen sa {0} sa {1} pagdaan ({2}%), at sa genus {3}%." },
+  "When it was 70%+ sure: {0}% right.": { id: "Saat yakin 70%+: {0}% benar.", ms: "Apabila 70%+ pasti: {0}% betul.", vi: "Khi chắc 70% trở lên: đúng {0}%.", th: "เมื่อมั่นใจ 70% ขึ้นไป: ถูก {0}%", fil: "Kapag 70%+ sigurado: {0}% tama." },
   "Everything is reviewed. Export the results when you're ready.": { id: "Semua sudah diperiksa. Ekspor hasilnya kapan pun Anda siap.", ms: "Semua sudah disemak. Eksport hasil apabila anda bersedia.", vi: "Đã xem xét xong. Xuất kết quả khi bạn sẵn sàng.", th: "ตรวจครบแล้ว ส่งออกผลได้เมื่อพร้อม", fil: "Nasuri na lahat. I-export ang resulta kapag handa ka na." },
   "Nothing here yet.": { id: "Belum ada apa-apa.", ms: "Belum ada apa-apa.", vi: "Chưa có gì.", th: "ยังไม่มีข้อมูล", fil: "Wala pa rito." },
 
