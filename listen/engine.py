@@ -23,6 +23,13 @@ from . import calls as callmod, detect, embed, media, metadata, reference as ref
 AUDIO_EXT = {".wav", ".WAV"}
 UNUSUAL_GAP = 0.05   # flag constant-frequency calls at least 5% from every known species' frequency
 MIN_CF_KHZ = 25.0
+# Open-air foragers: the bats that hunt high in open space, the group found flying inside the turbine
+# rotor zone in central Thailand (Srilopan et al. 2026, Biodiversity and Conservation 35:109: Mops,
+# Taphozous, Scotophilus, Myotis siligorensis) plus close relatives with the same flight style.
+OPEN_AIR_GENERA = {"Mops", "Chaerephon", "Tadarida", "Cheiromeles", "Taphozous", "Saccolaimus", "Scotophilus",
+                   "Miniopterus", "Pipistrellus", "Hypsugo", "Scotozous", "Ia"}
+OPEN_AIR_SPECIES = {"Myotis siligorensis"}
+OPEN_AIR_SOUNDS = ("free-tailed or sheath-tailed",)   # unlabelled passes whose call shape points to this group
 SURE = 0.7           # name a species at 70%+ confidence; below that, fall back to a confident genus
 
 
@@ -250,6 +257,32 @@ class Survey:
         """What to call a pass in charts: the expert's label, else its broad sound type."""
         return p["label"] or (p.get("sound") or {}).get("hint", "unclear").split(" (")[0].replace("typical of ", "")
 
+    def open_air(self, p: dict) -> str | None:
+        """'labelled' / 'by sound' if this pass is an open-air forager, else None."""
+        name = p["label"] or ""
+        if name and (name.split()[0] in OPEN_AIR_GENERA or name in OPEN_AIR_SPECIES):
+            return "labelled"
+        if not name and any(k in (p.get("sound") or {}).get("hint", "") for k in OPEN_AIR_SOUNDS):
+            return "by sound"
+        return None
+
+    def wind_risk(self) -> dict:
+        """Open-air forager activity by hour and by night: when bats that fly at turbine height are about."""
+        by_hour, by_night, n_lab, n_snd = {}, {}, 0, 0
+        for p in self.passes:
+            kind = self.open_air(p)
+            if not kind:
+                continue
+            n_lab, n_snd = n_lab + (kind == "labelled"), n_snd + (kind == "by sound")
+            tm = p.get("time") or {}
+            if tm.get("hour") is not None:
+                by_hour[tm["hour"]] = by_hour.get(tm["hour"], 0) + 1
+            if tm.get("iso"):
+                night = (datetime.fromisoformat(tm["iso"]) - timedelta(hours=12)).date().isoformat()
+                by_night[night] = by_night.get(night, 0) + 1
+        return {"labelled": n_lab, "by_sound": n_snd, "by_hour": by_hour,
+                "top_nights": sorted(by_night.items(), key=lambda kv: -kv[1])[:5], "nights": len(by_night)}
+
     def sites_and_nights(self) -> tuple[list[dict], list[dict]]:
         """Detector sites (from GUANO / AudioMoth metadata) and activity per night across the survey.
         A night runs noon to noon, so passes after midnight count with the evening they started."""
@@ -321,6 +354,6 @@ class Survey:
                 "passes": [{k: v for k, v in p.items() if k != "calls"} for p in self.passes],
                 "clusters": sorted(clusters.values(), key=lambda c: c["id"]), "skipped": self.skipped,
                 "activity": activity, "time_source": sorted(s for s in sources if s),
-                "known_species": self.known_species(), "sites": sites, "nights": nights,
+                "known_species": self.known_species(), "sites": sites, "nights": nights, "wind": self.wind_risk(),
                 "reference": {"path": self.reference_path, "species": len(self.reference["species"]),
                               "passes": int(len(self.reference["y"]))} if self.reference else None}
