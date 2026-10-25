@@ -3,6 +3,7 @@ import csv
 import html
 from collections import Counter
 from datetime import datetime
+from pathlib import Path
 
 from .engine import Survey
 
@@ -39,6 +40,8 @@ def export(survey: Survey) -> dict:
         w.writeheader()
         w.writerows(call_rows)
 
+    occ_path, n_occ = darwin_core(survey)
+
     reviewed = Counter(p["label"] for p in survey.passes if p["label"])
     suggested = Counter(p["suggestion"] for p in survey.passes if not p["label"] and p["suggestion"])
     unknown = sum(1 for p in survey.passes if not p["label"] and not p["suggestion"])
@@ -66,4 +69,47 @@ h1{{margin:0 0 4px}}table{{border-collapse:collapse;width:100%;margin:16px 0}}td
 suggestions as leads, not identifications. Skipped files: {len(survey.skipped)}.</p></body></html>"""
     report_path = out / "report.html"
     report_path.write_text(page, encoding="utf8")
-    return {"csv": str(csv_path), "calls": str(calls_path), "report": str(report_path)}
+    return {"csv": str(csv_path), "calls": str(calls_path), "report": str(report_path), "occurrences": str(occ_path),
+            "n_occurrences": n_occ}
+
+
+DWC_FIELDS = ["occurrenceID", "basisOfRecord", "eventDate", "scientificName", "taxonRank", "kingdom", "phylum", "class",
+              "order", "decimalLatitude", "decimalLongitude", "geodeticDatum", "organismQuantity", "organismQuantityType",
+              "samplingProtocol", "identificationVerificationStatus", "identificationRemarks", "associatedMedia",
+              "occurrenceRemarks"]
+
+
+def darwin_core(survey: Survey) -> tuple[Path, int]:
+    """occurrences.csv in Darwin Core, the standard GBIF and most biodiversity databases import.
+    One row per expert-reviewed pass with a species or genus name. Model suggestions are left out on
+    purpose: databases should only receive identifications a person has checked."""
+    rows = []
+    for p in survey.passes:
+        name = p["label"]
+        if not name or name.lower().startswith("unknown"):
+            continue
+        meta = survey.files_meta.get(p["file"], {})
+        m = p.get("measures") or {}
+        parts = [f"{k} {m[k]}" for k in ("f_char_khz", "duration_ms") if m.get(k) is not None]
+        rows.append({
+            "occurrenceID": f"wildward-listen:{survey.folder.name}:{p['file']}:{p['start']:.2f}",
+            "basisOfRecord": "MachineObservation",
+            "eventDate": (p.get("time") or {}).get("iso") or "",
+            "scientificName": name,
+            "taxonRank": "species" if len(name.split()) >= 2 else "genus",
+            "kingdom": "Animalia", "phylum": "Chordata", "class": "Mammalia", "order": "Chiroptera",
+            "decimalLatitude": meta.get("lat", ""), "decimalLongitude": meta.get("lon", ""),
+            "geodeticDatum": "WGS84" if "lat" in meta else "",
+            "organismQuantity": 1, "organismQuantityType": "bat passes",
+            "samplingProtocol": "passive acoustic monitoring" + (f", {meta['device']}" if meta.get("device") else ""),
+            "identificationVerificationStatus": "verified by expert",
+            "identificationRemarks": "identified from echolocation calls; reviewed in WildWard Listen",
+            "associatedMedia": p["file"],
+            "occurrenceRemarks": "call " + ", ".join(parts) + (f", shape {m['shape']}" if m.get("shape") else "") if parts else "",
+        })
+    path = survey.dir / "occurrences.csv"
+    with path.open("w", newline="", encoding="utf8") as f:
+        w = csv.DictWriter(f, fieldnames=DWC_FIELDS)
+        w.writeheader()
+        w.writerows(rows)
+    return path, len(rows)

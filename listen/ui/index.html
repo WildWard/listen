@@ -342,8 +342,8 @@ document.addEventListener("click", async e => {
   }
 });
 $("#export").onclick = async () => {
-  await fetch("/api/export", { method: "POST" });
-  toast("Saved in the survey folder (.wildward): passes.csv, calls.csv and report.html");
+  const r = await (await fetch("/api/export", { method: "POST" })).json();
+  toast(`Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html and occurrences.csv (${r.n_occurrences ?? 0} reviewed records in Darwin Core, ready for GBIF)`);
 };
 $("#openOther").onclick = () => showStart({ folder: survey && survey.folder });
 $("#refBtn").onclick = () => survey && showReference();
