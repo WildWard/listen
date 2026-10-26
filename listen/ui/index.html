@@ -5,84 +5,188 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WildWard Listen</title>
 <style>
-/* offline tool: system fonts only, nothing loaded from the internet */
-:root { --night:#0a1510; --card:#0f1f18; --line:#1f3a2d; --wing:#e9a04b; --leaf:#8fbf7a; --bone:#eef0ea; --fog:#9fb0a6; --sky:#7fb3c8; }
+/* Offline tool: system fonts only, nothing loaded from the internet.
+   Palette "dusk survey": night ink, moonlight text, the amber of call energy in a spectrogram. */
+:root {
+  --ink: #0c111d; --panel: #141b2b; --raise: #1a2337; --well: #090d16; --rule: #253047;
+  --moon: #ebe8e1; --mist: #8e98ae; --amber: #f0b44c; --sage: #79c2a0; --flag: #e7735e;
+  --display: "Bahnschrift", "DIN Alternate", "DIN Next", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "SF Mono", ui-monospace, Consolas, monospace;
+  --taxon: Georgia, "Times New Roman", serif;
+}
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--night); color: var(--bone); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
-button, input, select { font: inherit; }
-:focus-visible { outline: 2px solid var(--wing); outline-offset: 2px; }
-header { position: sticky; top: 0; z-index: 5; background: rgba(10,21,16,.96); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-.brand { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.brand span { color: var(--wing); }
-.folder { color: var(--fog); font: 12px ui-monospace, monospace; overflow-wrap: anywhere; }
-.stats { margin-left: auto; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+html { color-scheme: dark; }
+body { margin: 0; background: var(--ink); color: var(--moon); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+code { font: .9em var(--mono); color: var(--moon); }
+i.tx, .tx { font-family: var(--taxon); font-style: italic; }
+
+/* ---- header ---- */
+header { position: sticky; top: 0; z-index: 5; background: rgba(12,17,29,.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule); }
+.hrow { max-width: 1440px; margin: 0 auto; padding: 12px 24px; display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.brand { font: 600 13px/1 var(--display); letter-spacing: .22em; text-transform: uppercase; color: var(--mist); white-space: nowrap; }
+.brand b { color: var(--moon); font-weight: 700; }
+.brand::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-right: 10px; vertical-align: 1px; box-shadow: 0 0 10px var(--amber); }
+.survey-name { min-width: 0; flex: 1 1 200px; }
+.survey-name strong { display: block; font: 600 17px/1.2 var(--display); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.survey-name span { display: block; font: 11px/1.4 var(--mono); color: var(--mist); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .stats[hidden] { display: none; }
-.stat b { font-size: 1.15rem; color: var(--leaf); }
-.btn { background: var(--wing); color: #12201a; border: 0; border-radius: 99px; padding: 9px 16px; font-weight: 700; cursor: pointer; }
-.btn.ghost { background: transparent; color: var(--bone); border: 1.5px solid var(--line); }
-.btn:disabled { opacity: .5; cursor: default; }
-.bar { height: 6px; width: 140px; background: var(--line); border-radius: 9px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--leaf); }
-main { padding: 20px 24px 80px; max-width: 1400px; margin: 0 auto; }
-.tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
-.tabs button { background: var(--card); color: var(--fog); border: 1px solid var(--line); border-radius: 99px; padding: 7px 14px; cursor: pointer; }
-.tabs button[aria-pressed="true"] { color: var(--bone); border-color: var(--leaf); }
-.hint { color: var(--fog); margin: 0 0 18px; max-width: 75ch; }
-.cluster { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
-.cluster.done { border-color: rgba(143,191,122,.45); }
-.chead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
-.chead h2 { margin: 0; font-size: 1.05rem; }
-.meta { color: var(--fog); font-size: .9rem; }
-.sound { color: var(--sky); font-size: .9rem; margin: 0 0 12px; }
-.selfcheck { border-left: 3px solid var(--leaf); padding-left: 12px; color: var(--bone); }
-.unusual { border-left: 3px solid var(--wing); background: rgba(233,160,75,.1); padding: 10px 14px; border-radius: 6px; font-size: .9rem; margin: 0 0 14px; }
-.odd { color: var(--wing); font-weight: 600; }
-.tag { border-radius: 99px; padding: 2px 10px; font-size: .85rem; }
-.tag.ok { background: rgba(143,191,122,.15); color: var(--leaf); }
-.tag.sug { background: rgba(233,160,75,.13); color: var(--wing); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-.pass { position: relative; background: #0b1812; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.pass.off { opacity: .35; }
-.pass img { display: block; width: 100%; height: 86px; object-fit: cover; cursor: pointer; }
-.pinfo { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 8px; font: 11px/1.3 ui-monospace, monospace; color: var(--fog); }
-.pinfo .lab { color: var(--leaf); font: italic 12px system-ui, sans-serif; }
-.pinfo .sg { color: var(--wing); font: italic 12px system-ui, sans-serif; }
-.play { background: none; border: 1px solid var(--line); color: var(--bone); border-radius: 99px; width: 28px; height: 28px; cursor: pointer; flex: none; }
-.pick { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: var(--wing); }
-.labelrow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
-.labelrow input[type=text] { flex: 1 1 260px; background: #0b1812; color: var(--bone); border: 1px solid var(--line); border-radius: 99px; padding: 9px 14px; }
-.more { background: none; border: 0; color: var(--fog); text-decoration: underline; cursor: pointer; padding: 0; }
-.empty { color: var(--fog); padding: 40px 0; text-align: center; }
-.panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
-.panel h2 { margin: 0 0 4px; font-size: 1.1rem; }
-.start { max-width: 640px; margin: 60px auto; }
-.start label { display: block; color: var(--fog); margin: 14px 0 6px; }
-.start input[type=text], .start select { width: 100%; background: #0b1812; color: var(--bone); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-.log { font: 12px/1.6 ui-monospace, monospace; color: var(--fog); background: #0b1812; border-radius: 10px; padding: 12px; margin-top: 16px; white-space: pre-wrap; min-height: 3em; }
+.meter { display: grid; gap: 5px; min-width: 150px; }
+.meter small { font: 12px var(--mono); color: var(--mist); }
+.meter small b { color: var(--moon); font-weight: 600; }
+.bar { height: 4px; background: var(--rule); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--sage); transition: width .3s; }
+.lang { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 8px; font-size: .85rem; }
+nav.tabs { max-width: 1440px; margin: 0 auto; padding: 0 24px; display: flex; gap: 2px; overflow-x: auto; }
+nav.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--mist); padding: 10px 14px 9px; cursor: pointer; white-space: nowrap; font: 500 14px var(--display); letter-spacing: .03em; }
+nav.tabs button:hover { color: var(--moon); }
+nav.tabs button[aria-pressed="true"] { color: var(--moon); border-bottom-color: var(--amber); }
+nav.tabs button .n { font: 11px var(--mono); color: var(--mist); margin-left: 6px; }
+
+/* ---- buttons ---- */
+.btn { background: var(--amber); color: #1a1406; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 650; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--moon); border: 1px solid var(--rule); }
+.btn.ghost:hover { border-color: var(--mist); filter: none; }
+.btn:disabled { opacity: .45; cursor: default; }
+kbd { font: 600 11px/1 var(--mono); padding: 3px 6px; border-radius: 5px; border: 1px solid currentColor; opacity: .7; }
+
+main { padding: 24px 24px 80px; max-width: 1440px; margin: 0 auto; }
+.hint { color: var(--mist); margin: 0 0 18px; max-width: 78ch; }
+.empty { color: var(--mist); padding: 48px 0; text-align: center; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.panel h2, .start h2 { margin: 0 0 6px; font: 600 1.15rem var(--display); letter-spacing: .02em; }
+.eyebrow { font: 600 11px var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--mist); margin: 0 0 8px; }
+
+/* ---- start / reference / scanning ---- */
+.start { max-width: 640px; margin: 48px auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 28px; }
+.start h2 { font-size: 1.5rem; }
+.start label { display: block; color: var(--mist); margin: 16px 0 6px; font-size: .92rem; }
+.start label.check { display: flex; gap: 8px; align-items: center; color: var(--moon); }
+.field, .start input[type=text], .start select { width: 100%; background: var(--well); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; }
 .pickrow { display: flex; gap: 8px; align-items: center; }
 .pickrow input { flex: 1; min-width: 0; }
-body.dropping main { outline: 3px dashed var(--wing); outline-offset: -12px; border-radius: 18px; }
-.lang { background: var(--card); color: var(--bone); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .85rem; }
-.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--fog); margin-top: 8px; }
+.log { font: 12px/1.7 var(--mono); color: var(--mist); background: var(--well); border-radius: 8px; padding: 12px 14px; margin-top: 16px; white-space: pre-wrap; min-height: 3em; }
+body.dropping main { outline: 2px dashed var(--amber); outline-offset: -12px; border-radius: 18px; }
+
+/* ---- quick review ---- */
+.qr { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.qmeta { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 12px var(--mono); color: var(--mist); margin-bottom: 10px; }
+.qmeta b { color: var(--moon); font-weight: 600; }
+.scope { display: grid; grid-template-columns: 40px minmax(0, 1fr) 170px; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 0 22px; }
+.axis, .rail { position: relative; font: 11px var(--mono); color: var(--mist); }
+.axis span { position: absolute; right: 6px; transform: translateY(-50%); }
+.screen { position: relative; aspect-ratio: 1200 / 540; background: #090d16; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+.screen img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
+.screen .grid-line { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(142,152,174,.12); pointer-events: none; }
+.screen .fc { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--amber); pointer-events: none; }
+.screen .fc span { position: absolute; left: 6px; top: -20px; font: 600 11px var(--mono); color: var(--amber); background: rgba(9,13,22,.8); padding: 1px 5px; border-radius: 4px; }
+.screen .time { position: absolute; bottom: -19px; font: 11px var(--mono); color: var(--mist); transform: translateX(-50%); }
+.rail .tick { position: absolute; left: 0; width: 8px; border-top: 1px solid var(--mist); }
+.rail .tick.near { border-color: var(--amber); width: 12px; }
+.rail .band { position: absolute; left: 16px; right: 4px; display: flex; gap: 6px; align-items: baseline; transform: translateY(-50%); white-space: nowrap; overflow: hidden; line-height: 14px; }
+.rail .band.near { color: var(--amber); }
+.rail .band em { font: italic 12px var(--taxon); overflow: hidden; text-overflow: ellipsis; }
+.rail .band small { font: 10px var(--mono); opacity: .7; }
+.rail .cap { position: absolute; top: -2px; left: 10px; font: 600 10px var(--display); letter-spacing: .14em; text-transform: uppercase; }
+.playrow { display: flex; gap: 14px; align-items: center; margin: 14px 0 18px; flex-wrap: wrap; color: var(--mist); font-size: .9rem; }
+.playbig { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--rule); background: var(--panel); cursor: pointer; font-size: 15px; }
+.playbig:hover { border-color: var(--amber); color: var(--amber); }
+.playrow label { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+
+.decide { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 18px 20px; }
+.verdict { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.verdict .name { font: italic 1.9rem/1.15 var(--taxon); margin: 0; overflow-wrap: anywhere; }
+.verdict .name.plain { font: 600 1.25rem var(--display); font-style: normal; color: var(--mist); }
+.verdict .sub { color: var(--mist); font-size: .9rem; margin-top: 4px; }
+.verdict .grow { flex: 1 1 260px; min-width: 0; }
+.level { display: flex; align-items: center; gap: 8px; margin-top: 8px; font: 12px var(--mono); color: var(--mist); }
+.level .bar { width: 140px; }
+.level .bar i { background: var(--amber); }
+.alts { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--rule); }
+.alt { background: var(--raise); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 12px; cursor: pointer; display: inline-flex; gap: 10px; align-items: center; }
+.alt:hover { border-color: var(--mist); }
+.alt em { font: italic 14px var(--taxon); }
+.alt small { font: 11px var(--mono); color: var(--mist); }
+.qactions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+.qactions .field { flex: 1 1 240px; width: auto; }
+.done-tag { display: inline-flex; gap: 8px; align-items: center; color: var(--sage); font-size: .9rem; margin-bottom: 8px; }
+
+aside.side { display: grid; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; }
+.big-num { font: 600 2.2rem/1 var(--display); }
+.big-num small { font: 13px var(--body); color: var(--mist); margin-left: 6px; }
+dl.measures { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: .88rem; }
+dl.measures dt { color: var(--mist); }
+dl.measures dd { margin: 0; font-family: var(--mono); text-align: right; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: .85rem; color: var(--mist); align-items: center; }
+.keys kbd { justify-self: start; }
+.note { font-size: .88rem; color: var(--mist); margin: 0; }
+.note.good { color: var(--moon); border-left: 2px solid var(--sage); padding-left: 10px; }
+.unusual { border-left: 2px solid var(--flag); background: rgba(231,115,94,.08); padding: 10px 14px; border-radius: 6px; font-size: .88rem; margin: 0 0 14px; }
+
+/* ---- group review ---- */
+.selfcheck { border-left: 2px solid var(--sage); padding-left: 12px; color: var(--moon); }
+.cluster { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+.cluster.done { border-color: rgba(121,194,160,.4); }
+.chead { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+.chead h2 { margin: 0; font: 600 1.05rem var(--display); letter-spacing: .03em; }
+.meta { color: var(--mist); font: 12px var(--mono); }
+.sound { color: var(--mist); font-size: .9rem; margin: 0 0 12px; }
+.odd { color: var(--flag); font-weight: 600; }
+.tag { border-radius: 6px; padding: 2px 9px; font-size: .85rem; }
+.tag.ok { background: rgba(121,194,160,.14); color: var(--sage); }
+.tag.sug { background: rgba(240,180,76,.12); color: var(--amber); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.pass { position: relative; background: var(--well); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.pass.off { opacity: .35; }
+.pass img { display: block; width: 100%; height: 86px; object-fit: cover; cursor: pointer; }
+.pinfo { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 8px; font: 11px/1.35 var(--mono); color: var(--mist); }
+.pinfo .lab { color: var(--sage); font: italic 12px var(--taxon); }
+.pinfo .sg { color: var(--amber); font: italic 12px var(--taxon); }
+.play { background: none; border: 1px solid var(--rule); border-radius: 50%; width: 28px; height: 28px; cursor: pointer; flex: none; }
+.play:hover { border-color: var(--amber); color: var(--amber); }
+.pick { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; accent-color: var(--amber); }
+.labelrow { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.labelrow input[type=text] { flex: 1 1 260px; background: var(--well); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 12px; }
+.more { background: none; border: 0; color: var(--mist); text-decoration: underline; cursor: pointer; padding: 0; }
+
+/* ---- charts and tables ---- */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--mist); margin-top: 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 table.sum { border-collapse: collapse; width: 100%; font-size: .92rem; }
-table.sum td, table.sum th { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; }
-#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card); border: 1px solid var(--leaf); border-radius: 12px; padding: 10px 16px; display: none; max-width: 90vw; }
+table.sum td, table.sum th { border-bottom: 1px solid var(--rule); padding: 8px; text-align: left; }
+table.sum th { font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--mist); }
+#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--raise); border: 1px solid var(--rule); border-left: 3px solid var(--sage); border-radius: 10px; padding: 10px 16px; display: none; max-width: 90vw; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+
+@media (max-width: 1000px) { .qr { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .hrow, nav.tabs, main { padding-left: 16px; padding-right: 16px; }
+  .scope { grid-template-columns: 34px minmax(0, 1fr) 0; }
+  .rail { display: none; }
+  .verdict .name { font-size: 1.5rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">Wild<span>Ward</span> Listen</div>
-  <div class="folder" id="folder"></div>
-  <div class="stats" id="stats" hidden>
-    <span class="stat"><b id="nPasses">0</b> <span data-t="passes">passes</span></span>
-    <span class="stat"><b id="nReviewed">0</b> <span data-t="reviewed">reviewed</span></span>
-    <span class="bar" data-t-title="Share of passes reviewed" title="Share of passes reviewed"><i id="progress" style="width:0"></i></span>
-    <button class="btn ghost" id="refBtn" data-t="Reference library">Reference library</button>
-    <button class="btn ghost" id="openOther" data-t="Open another survey">Open another survey</button>
-    <button class="btn" id="export" data-t="Export">Export</button>
+  <div class="hrow">
+    <div class="brand"><b>WildWard</b> Listen</div>
+    <div class="survey-name" id="folder"></div>
+    <div class="stats" id="stats" hidden>
+      <div class="meter"><small><b id="nReviewed">0</b> / <span id="nPasses">0</span> <span data-t="reviewed">reviewed</span></small>
+        <span class="bar" data-t-title="Share of passes reviewed" title="Share of passes reviewed"><i id="progress" style="width:0"></i></span></div>
+      <button class="btn ghost" id="refBtn" data-t="Reference library">Reference library</button>
+      <button class="btn ghost" id="openOther" data-t="Open another survey">Open another survey</button>
+      <button class="btn" id="export" data-t="Export">Export</button>
+    </div>
+    <select id="lang" aria-label="Language" class="lang"></select>
   </div>
-  <select id="lang" aria-label="Language" class="lang"></select>
+  <nav class="tabs" id="tabs" aria-label="View" hidden></nav>
 </header>
 <main id="main"></main>
 <datalist id="species"></datalist>
@@ -91,9 +195,12 @@ table.sum td, table.sum th { border-bottom: 1px solid var(--line); padding: 7px 
 <script src="/i18n.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-let survey = null, view = "todo", poller = null;
+let survey = null, view = "quick", poller = null;
 const expanded = new Set(), unpicked = new Set();
-const COLORS = ["#8fbf7a", "#e9a04b", "#7fb3c8", "#d98ab5", "#c9c36a", "#9a8fd9", "#e07a5f", "#5fbfa8"];
+const COLORS = ["#79c2a0", "#f0b44c", "#7fb3d8", "#d98ab5", "#c9c36a", "#9a8fd9", "#e7735e", "#5fbfa8"];
+// spectrogram images span 10-190 kHz, high frequencies on top, first 2 s of the pass (listen/media.py)
+const KHZ_MIN = 10, KHZ_MAX = 190, CLIP_S = 2;
+const khzTop = f => 100 * (KHZ_MAX - f) / (KHZ_MAX - KHZ_MIN);
 
 function applyStatic() {
   document.documentElement.lang = LANG;
@@ -125,23 +232,26 @@ async function boot() {
   showStart(st);
 }
 
+function chrome(on) { $("#stats").hidden = !on; $("#tabs").hidden = !on; if (!on) $("#folder").innerHTML = ""; }
+
 function showStart(st = {}) {
-  $("#stats").hidden = true; $("#folder").textContent = "";
-  $("#main").innerHTML = `<section class="panel start">
-    <h2>${t("Open a survey")}</h2>
+  chrome(false);
+  $("#main").innerHTML = `<section class="start">
+    <p class="eyebrow">${t("Open a survey")}</p>
+    <h2>${t("Folder with recordings")}</h2>
     <p class="hint">${t("Point WildWard Listen at a folder of bat-detector recordings (WAV). It finds every bat pass, groups similar calls and measures them, all on this computer. Results are saved inside the folder, so you can close the app any time.")}</p>
     ${LANG !== "en" ? `<p class="hint">${t("Translations are a first draft. Corrections welcome: wildward.org@gmail.com")}</p>` : ""}
     <label for="f">${t("Folder with recordings")}</label>
     <div class="pickrow"><input id="f" type="text" placeholder="e.g. D:\\Surveys\\Taman Negara night 1" value="${esc(st.folder || "")}">${browseBtn("f")}</div>
-    ${inWindow() ? `<p class="hint">${t("Or drag a folder of recordings onto this window.")}</p>` : ""}
+    ${inWindow() ? `<p class="hint" style="margin-top:8px">${t("Or drag a folder of recordings onto this window.")}</p>` : ""}
     <label for="te">${t("How were the files recorded?")}</label>
     <select id="te">
       <option value="1">${t("Real time (full-spectrum, 192 kHz or higher)")}</option>
       <option value="10">${t("Time-expanded 10x")}</option>
       <option value="16">${t("Time-expanded 16x")}</option>
     </select>
-    <label><input type="checkbox" id="rescan"> ${t("Scan again even if results already exist")}</label>
-    <p style="margin-top:18px"><button class="btn" id="go">${t("Scan recordings")}</button></p>
+    <label class="check"><input type="checkbox" id="rescan"> ${t("Scan again even if results already exist")}</label>
+    <p style="margin:22px 0 0"><button class="btn" id="go">${t("Scan recordings")}</button></p>
     ${st.state === "error" ? `<div class="log">${esc((st.log || []).join("\n"))}</div>` : ""}
   </section>`;
   $("#go").onclick = async () => {
@@ -154,8 +264,9 @@ function showStart(st = {}) {
 
 function showReference() {
   const r = survey.reference;
-  $("#main").innerHTML = `<section class="panel start">
-    <h2>${t("Reference library")}</h2>
+  $("#main").innerHTML = `<section class="start">
+    <p class="eyebrow">${t("Reference library")}</p>
+    <h2>${t("Learn species")}</h2>
     <p class="hint">${t("Teach WildWard Listen the species you already know. Pick a folder with one sub-folder per species, named exactly as it should appear, for example {0}. WildWard learns them before you review anything, then suggests species for this survey with a confidence score. Your own labels from this survey always count more than the library.", "<code>My calls&#92;Hipposideros larvatus&#92;*.wav</code>")}</p>
     ${r ? `<p class="hint">${t("Current library: {0}, {1} species, {2} reference passes.", `<b>${esc(r.path)}</b>`, r.species, r.passes)}</p>` : ""}
     <label for="rf">${t("Reference folder")}</label>
@@ -163,7 +274,7 @@ function showReference() {
     <label for="rte">${t("How were the reference files recorded?")}</label>
     <select id="rte"><option value="1">${t("Real time (192 kHz or higher)")}</option><option value="10">${t("Time-expanded 10x")}</option><option value="16">${t("Time-expanded 16x")}</option></select>
     <p class="hint" style="margin-top:8px">${t("Mixed formats? Put a file named te.txt containing 10 or 16 inside any species folder that is time-expanded.")}</p>
-    <p style="margin-top:18px"><button class="btn" id="learn">${t("Learn species")}</button>
+    <p style="margin:22px 0 0; display:flex; gap:8px; flex-wrap:wrap"><button class="btn" id="learn">${t("Learn species")}</button>
       ${r ? `<button class="btn ghost" id="forget">${t("Stop using this library")}</button>` : ""}
       <button class="btn ghost" id="back">${t("Back to review")}</button></p>
   </section>`;
@@ -178,8 +289,8 @@ function showReference() {
 }
 
 function showScanning() {
-  $("#stats").hidden = true;
-  $("#main").innerHTML = `<section class="panel start"><h2>${t("Working…")}</h2>
+  chrome(false);
+  $("#main").innerHTML = `<section class="start"><p class="eyebrow">${t("Working…")}</p><h2>${t("Working…")}</h2>
     <p class="hint">${t("Finding bat calls, measuring them and comparing sounds. The first run on a big folder can take a while on a laptop. Results are cached, so next time is fast. You can leave this page open.")}</p>
     <div class="log" id="log"></div></section>`;
   clearInterval(poller);
@@ -192,24 +303,33 @@ function showScanning() {
 
 async function loadSurvey() {
   survey = await (await fetch("/api/survey")).json();
-  $("#stats").hidden = false;
+  chrome(true);
+  if (!survey.passes.length && view === "quick") view = "todo";
   render();
 }
 
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 4500); }
 
-function render() {
+function renderHeader() {
   const P = survey.passes, reviewed = P.filter(p => p.label).length;
-  $("#folder").textContent = survey.folder;
+  const parts = survey.folder.split(/[\\/]/).filter(Boolean);
+  $("#folder").innerHTML = `<strong>${esc(parts[parts.length - 1] || survey.folder)}</strong><span>${esc(survey.folder)}</span>`;
   $("#nPasses").textContent = P.length.toLocaleString();
   $("#nReviewed").textContent = reviewed.toLocaleString();
   $("#progress").style.width = (P.length ? 100 * reviewed / P.length : 0) + "%";
-  $("#species").innerHTML = [...new Set(P.map(p => p.label).filter(Boolean))].sort().map(l => `<option value="${esc(l)}">`).join("");
-  const tabs = [["todo", "To review"], ["all", "All groups"], ["done", "Reviewed"], ["night", "Night activity"], ["season", "Sites & nights"]];
-  let body = `<div class="tabs" role="group" aria-label="View">${tabs.map(([k, l]) => `<button data-view="${k}" aria-pressed="${view === k}">${t(l)}</button>`).join("")}</div>`;
-  if (view === "night") { $("#main").innerHTML = body + nightHtml(); return; }
-  if (view === "season") { $("#main").innerHTML = body + seasonHtml(); return; }
-  body += `<p class="hint">${t("Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once.")} ${view === "todo" ? t("Groups are ordered so the ones that teach WildWard the most come first.") : ""} ${survey.reference ? t("Species suggestions come from your reference library ({0} species) plus your labels.", survey.reference.species) : t("Add a reference library, or label two species, and WildWard starts suggesting species for the rest.")} ${t("It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming, and use \"Not in my library\" for bats it doesn't know. It learns from that too. Confidence scores appear once it knows five species.")}</p>
+  $("#species").innerHTML = (survey.known_species || []).map(l => `<option value="${esc(l)}">`).join("");
+  const open = P.length - reviewed;
+  const tabs = [["quick", "Quick review", open], ["todo", "To review", null], ["all", "All groups", null], ["done", "Reviewed", reviewed], ["night", "Night activity", null], ["season", "Sites & nights", null]];
+  $("#tabs").innerHTML = tabs.map(([k, l, n]) => `<button data-view="${k}" aria-pressed="${view === k}">${t(l)}${n != null ? `<span class="n">${n}</span>` : ""}</button>`).join("");
+}
+
+function render() {
+  renderHeader();
+  if (view === "quick") return renderQuick();
+  const P = survey.passes;
+  if (view === "night") { $("#main").innerHTML = nightHtml(); return; }
+  if (view === "season") { $("#main").innerHTML = seasonHtml(); return; }
+  let body = `<p class="hint">${t("Passes that sound alike are grouped together. Listen to a few, untick any that don't belong, type the species and label the whole group at once.")} ${view === "todo" ? t("Groups are ordered so the ones that teach WildWard the most come first.") : ""} ${survey.reference ? t("Species suggestions come from your reference library ({0} species) plus your labels.", survey.reference.species) : t("Add a reference library, or label two species, and WildWard starts suggesting species for the rest.")} ${t("It can only suggest species it knows, so a bat missing from your library will be given the closest known species: always listen before confirming, and use \"Not in my library\" for bats it doesn't know. It learns from that too. Confidence scores appear once it knows five species.")}</p>
   ${selfCheckHtml()}`;
   let groups = survey.clusters.filter(c => {
     const done = c.passes.every(i => P[i].label);
@@ -222,6 +342,197 @@ function render() {
   $("#main").innerHTML = body;
 }
 
+// ================= Quick review: one pass at a time, keyboard first =================
+// The queue is fixed when the screen opens (biggest teaching value first), so passes don't jump around
+// while Listen retrains after every label. Labels are saved in the background, one after another.
+const Q = { order: null, pos: 0, session: 0, started: null, pending: new Map(), chain: Promise.resolve(), autoplay: true, lastPlayed: null };
+try { Q.autoplay = localStorage.getItem("wildward-autoplay") !== "0"; } catch (e) { /* default on */ }
+
+function buildQueue() {
+  const P = survey.passes, prio = {};
+  survey.clusters.forEach(c => { prio[c.id] = c.priority; });
+  Q.order = P.filter(p => !p.label).sort((a, b) => (prio[b.cluster] - prio[a.cluster]) || (a.cluster - b.cluster) || ((a.confidence ?? 0) - (b.confidence ?? 0))).map(p => p.id);
+  Q.pos = 0;
+}
+
+function quickPass() {
+  if (!Q.order) buildQueue();
+  // skip anything labelled since (in the group view, say), unless the reviewer stepped back to it
+  while (Q.pos < Q.order.length && survey.passes[Q.order[Q.pos]].label && !Q.back) Q.pos++;
+  return Q.pos < Q.order.length ? survey.passes[Q.order[Q.pos]] : null;
+}
+
+// what one press of Enter means for this pass: the species, or the genus when only the genus is sure
+function primary(p) {
+  if (!p.suggestion) return null;
+  const n = (survey.known_species || []).length;
+  if (p.genus && p.confidence < 0.7) return { label: p.genus, conf: p.genus_confidence, genus: true };
+  return { label: p.suggestion, conf: n >= 5 ? p.confidence : null, genus: false };
+}
+
+function renderQuick() {
+  const p = quickPass();
+  if (!survey.passes.length) { $("#main").innerHTML = `<p class="empty">No bat passes found in this folder.</p>`; return; }
+  if (!p) {
+    $("#main").innerHTML = `<section class="start" style="text-align:center"><p class="eyebrow">${t("Quick review")}</p>
+      <h2>${t("Everything is reviewed. Export the results when you're ready.")}</h2>
+      <p class="hint" style="margin:10px auto 22px">${Q.session ? t("You labelled {0} passes in this session.", Q.session) : ""}</p>
+      <p style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" data-export="1">${t("Export")}</button><button class="btn ghost" data-qback="1">${t("Back")} <kbd>←</kbd></button></p></section>`;
+    return;
+  }
+  const m = p.measures || {}, fc = m.f_char_khz ?? p.peak_khz, left = Q.order.length - Q.pos;
+  const pr = primary(p), alts = (p.top || []).filter(a => !pr || a[0] !== pr.label).slice(0, 3);
+  const known = (survey.known_species || []).length;
+  const bands = nearBands(fc);
+  const tm = (p.time || {}).iso ? p.time.iso.slice(11, 16) : null;
+  const dur = Math.min(CLIP_S, p.end - p.start);
+  $("#main").innerHTML = `<div class="qr">
+    <section aria-label="${t("Quick review")}">
+      <div class="qmeta"><span><b>${left}</b> ${t("left to review")}</span><span>${t("Group {0}", p.cluster + 1)}</span><span>${esc(p.file)} · ${p.start.toFixed(1)} s</span>${tm ? `<span>${tm}</span>` : ""}</div>
+      <div class="scope">
+        <div class="axis" aria-hidden="true">${[20, 40, 60, 80, 100, 120, 140, 160, 180].map(f => `<span style="top:${khzTop(f)}%">${f}</span>`).join("")}</div>
+        <div class="screen">
+          <img src="/big/${p.id}.png?v=2" alt="${t("Spectrogram of this pass, 10 to 190 kHz")}" data-qplay="1">
+          ${[20, 40, 60, 80, 100, 120, 140, 160, 180].map(f => `<div class="grid-line" style="top:${khzTop(f)}%"></div>`).join("")}
+          ${fc ? `<div class="fc" style="top:${khzTop(fc)}%"><span>${(+fc).toFixed(1)} kHz</span></div>` : ""}
+          ${[0, 0.5, 1, 1.5, 2].filter(s => s <= dur + 0.01).map(s => `<span class="time" style="left:${100 * s / CLIP_S}%">${s} s</span>`).join("")}
+        </div>
+        <div class="rail" aria-label="${t("Known species near this frequency")}">${bands.length ? `<span class="cap">${t("Known bands")}</span>` : ""}${bands.map(b => `<i class="tick ${b.near ? "near" : ""}" style="top:${khzTop(b.khz)}%"></i><div class="band ${b.near ? "near" : ""}" data-top="${khzTop(b.khz)}" style="top:${khzTop(b.khz)}%"><em>${esc(abbr(b.sp))}</em><small>${b.khz.toFixed(0)}</small></div>`).join("")}</div>
+      </div>
+      <div class="playrow"><button class="playbig" data-qplay="1" aria-label="${t("Play, slowed down 10x")}" aria-keyshortcuts="Space">▶</button>
+        <span>${t("Slowed down 10x")} · <kbd>Space</kbd></span>
+        <label><input type="checkbox" id="autoplay" ${Q.autoplay ? "checked" : ""}> ${t("Play each pass automatically")}</label></div>
+      ${p.unusual ? `<p class="unusual" role="note"><b>${t("Unusual frequency")}</b> · ${t("Calls around {0} kHz, {1}% from the closest species you know ({2}, {3} kHz). Could be a species missing from your library.", p.unusual.f_khz, Math.round(p.unusual.gap * 100), `<i class="tx">${esc(p.unusual.nearest)}</i>`, p.unusual.nearest_khz)}</p>` : ""}
+      <div class="decide">
+        ${p.label ? `<div class="done-tag">✓ ${t("Labelled as")} <i class="tx">${esc(p.label)}</i></div>` : ""}
+        <div class="verdict">
+          <div class="grow">
+            <p class="eyebrow">${pr ? (pr.genus ? t("Listen suggests the genus") : t("Listen suggests")) : p.label ? t("Already labelled") : t("No suggestion yet")}</p>
+            ${pr ? `<p class="name">${esc(pr.label)}${pr.genus ? " sp." : ""}</p>` : `<p class="name plain">${p.label ? t("Press S to keep it, or pick a new label.") : known < 2 ? t("Label two species and Listen starts suggesting.") : t("Type the species.")}</p>`}
+            ${pr && pr.conf != null ? `<div class="level"><span class="bar"><i style="width:${Math.round(pr.conf * 100)}%"></i></span>${Math.round(pr.conf * 100)}%${pr.conf < 0.7 ? " · " + t("(unsure)") : ""}</div>` : pr ? `<p class="sub">${t("closest of the {0} species it knows: {1}", known, esc(pr.label))}</p>` : ""}
+            ${pr && pr.genus ? `<p class="sub">${t("Best species guess: {0} ({1}%)", `<i class="tx">${esc(p.suggestion)}</i>`, Math.round(p.confidence * 100))}</p>` : ""}
+          </div>
+          ${pr ? `<button class="btn" data-qlabel="${esc(pr.label)}" aria-keyshortcuts="Enter">${t("Confirm")} <kbd>Enter</kbd></button>` : ""}
+        </div>
+        ${alts.length ? `<div class="alts" aria-label="${t("Other likely species")}">${alts.map((a, i) => `<button class="alt" data-qlabel="${esc(a[0])}" aria-keyshortcuts="${i + 1}"><kbd>${i + 1}</kbd><em>${esc(a[0])}</em>${known >= 5 ? `<small>${Math.round(a[1] * 100)}%</small>` : ""}</button>`).join("")}</div>` : ""}
+        <div class="qactions">
+          <input class="field" id="qtype" type="text" list="species" placeholder="${t("Another species or genus…")}" aria-label="${t("Type a species or genus, then press Enter")}" aria-keyshortcuts="/">
+          <button class="btn ghost" data-qlabel="Unknown (not in library)" aria-keyshortcuts="N" title="${t("For bats that aren't in your library. WildWard learns to send similar passes here instead of guessing a wrong species.")}">${t("Not in my library")} <kbd>N</kbd></button>
+          <button class="btn ghost" data-qskip="1" aria-keyshortcuts="S">${t("Skip")} <kbd>S</kbd></button>
+          <button class="btn ghost" data-qback="1" aria-keyshortcuts="ArrowLeft" ${Q.pos ? "" : "disabled"}>${t("Back")} <kbd>←</kbd></button>
+        </div>
+      </div>
+    </section>
+    <aside class="side">
+      <div class="card"><p class="eyebrow">${t("This session")}</p>
+        <div class="big-num">${Q.session}<small>${t("passes labelled")}</small></div>
+        ${Q.session >= 3 && Q.started ? `<p class="note" style="margin-top:8px">${t("About {0} per minute", (Q.session / Math.max(1, (Date.now() - Q.started) / 60000)).toFixed(1))}</p>` : ""}
+        ${Q.pending.size ? `<p class="note" style="margin-top:8px">${t("Learning from your labels…")}</p>` : ""}</div>
+      <div class="card"><p class="eyebrow">${t("How Listen is doing here")}</p>${quickCheck()}</div>
+      <div class="card"><p class="eyebrow">${t("Call measures")}</p>
+        ${m.f_char_khz ? `<dl class="measures">
+          <dt>${t("Characteristic frequency")}</dt><dd>${m.f_char_khz} kHz</dd>
+          <dt>${t("Start / end")}</dt><dd>${m.f_start_khz ?? "–"} / ${m.f_end_khz ?? "–"} kHz</dd>
+          <dt>${t("Duration")}</dt><dd>${m.duration_ms ?? "–"} ms</dd>
+          <dt>${t("Shape")}</dt><dd>${esc(m.shape || "–")}</dd>
+          <dt>${t("Calls measured")}</dt><dd>${m.n_calls ?? "–"}</dd></dl>` : `<p class="note">${t("Too faint to measure.")}</p>`}
+        ${(p.sound || {}).hint ? `<p class="note" style="margin-top:10px">${esc(p.sound.hint)}</p>` : ""}</div>
+      <div class="card"><p class="eyebrow">${t("Keys")}</p><div class="keys">
+        <kbd>Enter</kbd><span>${t("Confirm the suggestion")}</span>
+        <kbd>1 2 3</kbd><span>${t("Pick another likely species")}</span>
+        <kbd>/</kbd><span>${t("Type a species")}</span>
+        <kbd>N</kbd><span>${t("Not in my library")}</span>
+        <kbd>S</kbd><span>${t("Skip for now")}</span>
+        <kbd>←</kbd><span>${t("Back to the previous pass")}</span>
+        <kbd>Space</kbd><span>${t("Play again")}</span></div></div>
+    </aside></div>`;
+  spreadBands();
+  if (Q.autoplay && Q.lastPlayed !== p.id) { Q.lastPlayed = p.id; playPass(p.id); }
+}
+
+// ticks sit at the true frequency; names are nudged apart so they never overlap, nearest band kept in place
+function spreadBands() {
+  const rail = $(".rail"), H = rail && rail.clientHeight, gap = 15;
+  if (!H) return;
+  const els = [...rail.querySelectorAll(".band")].map(el => ({ el, y: H * el.dataset.top / 100 })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < els.length; i++) els[i].y = Math.max(els[i].y, els[i - 1].y + gap);
+  const over = els.length ? els[els.length - 1].y - (H - 6) : 0;
+  if (over > 0) { els[els.length - 1].y -= over; for (let i = els.length - 2; i >= 0; i--) els[i].y = Math.min(els[i].y, els[i + 1].y - gap); }
+  els.forEach(b => { b.el.style.top = b.y + "px"; });
+}
+window.addEventListener("resize", () => { if (view === "quick") spreadBands(); });
+
+function quickCheck() {
+  const s = survey.self_check;
+  if (!s || s.n < 10) return `<p class="note">${t("After 10 labels, Listen shows how often its suggestion matched yours in this survey.")}${s ? " " + t("{0} so far.", s.n) : ""}</p>`;
+  const pct = (a, b) => Math.round(100 * a / b);
+  return `<div class="big-num">${pct(s.right, s.n)}%<small>${t("right, {0} of {1}", s.right, s.n)}</small></div>
+    <p class="note" style="margin-top:8px">${t("Genus right {0}%.", pct(s.genus_right, s.n))}${s.n_sure >= 5 ? " " + t("When it was 70%+ sure: {0}% right.", pct(s.right_sure, s.n_sure)) : ""}</p>`;
+}
+
+// known constant-frequency bands close to this pass, for the ruler beside the spectrogram
+function nearBands(fc) {
+  // species only: genus-level and "Unknown" labels say nothing about where a species calls
+  const all = (survey.bands || []).map(([sp, khz]) => ({ sp, khz })).filter(b => b.khz >= KHZ_MIN && b.khz <= KHZ_MAX && b.sp.split(" ").length === 2 && !b.sp.startsWith("Unknown"));
+  if (!fc || !all.length) return [];
+  let near = all.filter(b => Math.abs(b.khz - fc) <= Math.max(12, fc * 0.2)).sort((a, b) => Math.abs(a.khz - fc) - Math.abs(b.khz - fc)).slice(0, 7);
+  if (near.length) near[0].near = Math.abs(near[0].khz - fc) / near[0].khz < 0.05;
+  return near.slice(0, 5);
+}
+const abbr = sp => { const w = sp.split(" "); return w.length > 1 && !sp.startsWith("Unknown") ? `${w[0][0]}. ${w.slice(1).join(" ")}` : sp; };
+
+function playPass(id) { const a = $("#player"); a.src = `/media/${id}.wav`; a.play().catch(() => { /* autoplay blocked until the first click */ }); }
+
+function quickLabel(label) {
+  const p = quickPass();
+  if (!p || !label) return;
+  if (!p.label) Q.session++;
+  Q.started = Q.started || Date.now();
+  p.label = label;   // shown at once; the server confirms and retrains in the background
+  Q.pending.set(p.id, label);
+  Q.back = false; Q.pos++;
+  const id = p.id;
+  Q.chain = Q.chain.then(async () => {
+    try {
+      const res = await (await fetch("/api/label", { method: "POST", body: JSON.stringify({ passes: [id], label }) })).json();
+      if (res.error) throw new Error(res.error);
+      if (Q.pending.get(id) === label) Q.pending.delete(id);
+      survey = res;
+      for (const [pid, l] of Q.pending) survey.passes[pid].label = l;   // labels still on their way
+    } catch (e) {
+      Q.pending.delete(id); toast(t("Could not save the label: {0}", e.message));
+    }
+    if (view === "quick" && !(document.activeElement && document.activeElement.id === "qtype")) render(); else renderHeader();
+  });
+  render();
+}
+
+function quickBack() {
+  if (!Q.pos) return;
+  Q.pos--; Q.back = true; Q.lastPlayed = null; render();
+}
+
+document.addEventListener("keydown", e => {
+  if (view !== "quick" || !survey || !$(".qr") || e.ctrlKey || e.metaKey || e.altKey) return;
+  const typing = e.target.matches("input[type=text], select, textarea");
+  if (typing) {
+    if (e.target.id === "qtype" && e.key === "Enter") { e.preventDefault(); const v = e.target.value.trim(); if (v) quickLabel(v); else toast(t("Type a species or genus first.")); }
+    if (e.key === "Escape") e.target.blur();
+    return;
+  }
+  const p = quickPass(), pr = p && primary(p);
+  const alts = p ? (p.top || []).filter(a => !pr || a[0] !== pr.label).slice(0, 3) : [];
+  const k = e.key;
+  if (k === "Enter" && p) { e.preventDefault(); if (Q.back && p.label && !pr) { Q.back = false; Q.pos++; render(); } else if (pr) quickLabel(pr.label); else $("#qtype").focus(); }
+  else if (/^[1-3]$/.test(k) && alts[+k - 1]) quickLabel(alts[+k - 1][0]);
+  else if ((k === "n" || k === "N") && p) quickLabel("Unknown (not in library)");
+  else if ((k === "s" || k === "S" || k === "ArrowRight") && p) { Q.back = false; Q.pos++; Q.lastPlayed = null; render(); }
+  else if (k === "ArrowLeft" || k === "Backspace") { e.preventDefault(); quickBack(); }
+  else if (k === " " && p) { e.preventDefault(); playPass(p.id); }
+  else if (k === "/" || k === "t" || k === "T") { e.preventDefault(); $("#qtype") && $("#qtype").focus(); }
+});
+
+// ================= group review =================
 function groupHtml(c) {
   const P = survey.passes, ps = c.passes.map(i => P[i]);
   const done = ps.every(p => p.label);
@@ -233,7 +544,7 @@ function groupHtml(c) {
   return `<section class="cluster ${done ? "done" : ""}" aria-label="Group ${c.id + 1}">
     <div class="chead"><h2>${t("Group {0}", c.id + 1)}</h2>
       <span class="meta">${t("{0} passes", ps.length)}${ms.length ? ` · ${t("calls around {0} kHz, {1} ms", fc.toFixed(1), dur.toFixed(1))}` : ""}</span>
-      ${lab ? `<span class="tag ok">${esc(lab)}</span>` : ""}
+      ${lab ? `<span class="tag ok"><i class="tx">${esc(lab)}</i></span>` : ""}
       ${sug && !done ? sugTag(sug, conf, ps) : ""}
     </div>
     ${snd ? `<p class="sound">${t("Sound type:")} ${esc(snd)}</p>` : ""}
@@ -258,7 +569,7 @@ function selfCheckHtml() {
 
 function unusualNote(c, ps) {
   const ex = ps.find(p => p.unusual).unusual;
-  return `<p class="unusual" role="note"><b>${t("Unusual frequency")}</b> · ${t("{0} of {1} passes call around {2} kHz, at least 5% from every constant-frequency species you know (closest: {3}, {4} kHz). It may be a species missing from your library, or one worth a closer look. Listen carefully and check before labelling.", c.unusual, ps.length, c.unusual_khz, `<i>${esc(ex.nearest)}</i>`, ex.nearest_khz)}</p>`;
+  return `<p class="unusual" role="note"><b>${t("Unusual frequency")}</b> · ${t("{0} of {1} passes call around {2} kHz, at least 5% from every constant-frequency species you know (closest: {3}, {4} kHz). It may be a species missing from your library, or one worth a closer look. Listen carefully and check before labelling.", c.unusual, ps.length, c.unusual_khz, `<i class="tx">${esc(ex.nearest)}</i>`, ex.nearest_khz)}</p>`;
 }
 
 function sugTag(sug, conf, ps) {
@@ -271,8 +582,8 @@ function sugTag(sug, conf, ps) {
   const g = topKey(counts);
   const gs = open.filter(p => p.genus && p.genus === g);
   if (conf < 0.7 && g && gs.length * 2 >= open.length)
-    return `<span class="tag sug" title="Not sure of the species, but sure of the genus. Best species guess: ${esc(sug)} (${(conf * 100).toFixed(0)}%)">${t("probably {0} (genus)", `<i>${esc(g)}</i>`)} · ${(mean(gs.map(p => p.genus_confidence)) * 100).toFixed(0)}%</span>`;
-  return `<span class="tag sug" title="Model suggestion, not reviewed">${t("suggested: {0}", esc(sug))} · ${(conf * 100).toFixed(0)}%${conf < 0.7 ? " " + t("(unsure)") : ""}</span>`;
+    return `<span class="tag sug" title="Not sure of the species, but sure of the genus. Best species guess: ${esc(sug)} (${(conf * 100).toFixed(0)}%)">${t("probably {0} (genus)", `<i class="tx">${esc(g)}</i>`)} · ${(mean(gs.map(p => p.genus_confidence)) * 100).toFixed(0)}%</span>`;
+  return `<span class="tag sug" title="Model suggestion, not reviewed">${t("suggested: {0}", `<i class="tx">${esc(sug)}</i>`)} · ${(conf * 100).toFixed(0)}%${conf < 0.7 ? " " + t("(unsure)") : ""}</span>`;
 }
 
 function passHtml(p) {
@@ -285,6 +596,9 @@ function passHtml(p) {
     <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${p.unusual.f_khz} kHz, ${Math.round(p.unusual.gap * 100)}% from the closest known species">${t("unusual")}</b>` : ""} ${who}</span>
       <button class="play" data-play="${p.id}" aria-label="Play pass ${p.id}, slowed down 10x">▶</button></div></div>`;
 }
+
+// ================= charts =================
+const axisText = (x, y, s, size = 11) => `<text x="${x}" y="${y}" style="fill:var(--mist)" font-size="${size}" font-family="Cascadia Mono, ui-monospace, monospace" text-anchor="middle">${s}</text>`;
 
 function nightHtml() {
   const act = survey.activity || {}, hours = Object.keys(act).map(Number);
@@ -303,7 +617,7 @@ function nightHtml() {
       const hh = (H - 40) * v / max; y -= hh;
       bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>${String(h).padStart(2, "0")}:00 · ${esc(g)}: ${v}</title></rect>`;
     }
-    bars += `<text x="${x + bw / 2}" y="${H - 8}" fill="#9fb0a6" font-size="11" text-anchor="middle">${String(h).padStart(2, "0")}h</text>`;
+    bars += axisText(x + bw / 2, H - 8, `${String(h).padStart(2, "0")}h`);
     x += bw + 6;
   }
   const totals = groups.map(g => [g, Object.values(act).reduce((s, o) => s + (o[g] || 0), 0)]).sort((a, b) => b[1] - a[1]);
@@ -326,8 +640,8 @@ function windHtml() {
   let x = 30, bars = "";
   for (const h of hours) {
     const v = w.by_hour[h], hh = (H - 40) * v / max;
-    bars += `<rect x="${x}" y="${(H - 24 - hh).toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" style="fill:var(--wing)" rx="2"><title>${String(h).padStart(2, "0")}:00 · ${v}</title></rect>
-      <text x="${x + bw / 2}" y="${H - 8}" fill="#9fb0a6" font-size="11" text-anchor="middle">${String(h).padStart(2, "0")}h</text>`;
+    bars += `<rect x="${x}" y="${(H - 24 - hh).toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" style="fill:var(--amber)" rx="2"><title>${String(h).padStart(2, "0")}:00 · ${v}</title></rect>
+      ${axisText(x + bw / 2, H - 8, `${String(h).padStart(2, "0")}h`)}`;
     x += bw + 6;
   }
   const top = (w.top_nights || []).slice(0, 3).map(([d, c]) => `${d} (${c})`).join(", ");
@@ -348,8 +662,8 @@ function seasonHtml() {
     const sx = lo => pad + (W - 2 * pad) * ((lo - lo0) * Math.cos(la0 * Math.PI / 180)) / span;
     const sy = la => H - pad - (H - 2 * pad) * (la - la0) / span;
     const maxP = Math.max(1, ...located.map(s => s.passes));
-    const dots = located.map(s => `<g><circle cx="${sx(s.lon).toFixed(1)}" cy="${sy(s.lat).toFixed(1)}" r="${(6 + 14 * Math.sqrt(s.passes / maxP)).toFixed(1)}" style="fill:var(--wing);fill-opacity:.75"><title>${esc(s.id)}: ${s.passes} passes</title></circle>
-      <text x="${(sx(s.lon) + 12).toFixed(1)}" y="${(sy(s.lat) - 12).toFixed(1)}" fill="#cdd6cf" font-size="22">${esc(String(s.id).slice(-6))}</text></g>`).join("");
+    const dots = located.map(s => `<g><circle cx="${sx(s.lon).toFixed(1)}" cy="${sy(s.lat).toFixed(1)}" r="${(6 + 14 * Math.sqrt(s.passes / maxP)).toFixed(1)}" style="fill:var(--amber);fill-opacity:.75"><title>${esc(s.id)}: ${s.passes} passes</title></circle>
+      <text x="${(sx(s.lon) + 12).toFixed(1)}" y="${(sy(s.lat) - 12).toFixed(1)}" style="fill:var(--moon)" font-size="22">${esc(String(s.id).slice(-6))}</text></g>`).join("");
     const km = (span * 111).toFixed(span * 111 < 10 ? 1 : 0);
     out += `<section class="panel"><h2>${t("Detector sites")}</h2>
       <p class="hint">From GPS positions stored in the recordings (GUANO metadata). Dot size = bat passes. The area shown is about ${km} km across. Works offline, no map tiles.</p>
@@ -374,7 +688,7 @@ function seasonHtml() {
         const hh = (H - 40) * v / max; y -= hh;
         bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>night of ${n.night} · ${esc(g)}: ${v}</title></rect>`;
       }
-      if (nights.length <= 31) bars += `<text x="${x + bw / 2}" y="${H - 8}" fill="#9fb0a6" font-size="10" text-anchor="middle">${n.night.slice(5)}</text>`;
+      if (nights.length <= 31) bars += axisText(x + bw / 2, H - 8, n.night.slice(5), 10);
       x += bw + 4;
     }
     out += `<section class="panel"><h2>${t("Activity night by night")}</h2>
@@ -386,13 +700,19 @@ function seasonHtml() {
 }
 
 document.addEventListener("click", async e => {
-  const el = e.target;
-  if (el.dataset.view) { view = el.dataset.view; render(); }
+  const el = e.target.closest("button, img, input") || e.target;
+  if (el.dataset.view) { view = el.dataset.view; if (view === "quick") { Q.order = null; Q.back = false; } render(); window.scrollTo(0, 0); }
   if (el.dataset.browse) {
     const folder = await window.pywebview.api.pick_folder();
     if (folder) $("#" + el.dataset.browse).value = folder;
   }
-  if (el.dataset.play) { const a = $("#player"); a.src = `/media/${el.dataset.play}.wav`; a.play(); }
+  if (el.dataset.play) playPass(el.dataset.play);
+  if (el.dataset.qplay) { const p = quickPass(); if (p) playPass(p.id); }
+  if (el.dataset.qlabel) quickLabel(el.dataset.qlabel);
+  if (el.dataset.qskip) { Q.back = false; Q.pos++; Q.lastPlayed = null; render(); }
+  if (el.dataset.qback) quickBack();
+  if (el.dataset.export) $("#export").click();
+  if (el.id === "autoplay") { Q.autoplay = el.checked; try { localStorage.setItem("wildward-autoplay", el.checked ? "1" : "0"); } catch (e) { /* per visit only */ } }
   if (el.dataset.more) { const id = +el.dataset.more; expanded.has(id) ? expanded.delete(id) : expanded.add(id); render(); }
   if (el.dataset.pick) { const id = +el.dataset.pick; el.checked ? unpicked.delete(id) : unpicked.add(id); el.closest(".pass").classList.toggle("off", !el.checked); }
   if (el.dataset.label || el.dataset.clear || el.dataset.unknown) {

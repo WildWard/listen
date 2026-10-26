@@ -108,6 +108,14 @@ def make_handler(app: App):
                 return self._json(app.status())
             if self.path == "/api/survey":
                 return self._ready() and self._json(app.survey.summary())
+            if self.path.startswith("/big/") and app.survey:
+                try:
+                    pid = int(Path(self.path[len("/big/"):]).stem)
+                    f = app.survey.big_spectrogram(pid) if 0 <= pid < len(app.survey.passes) else None
+                except (ValueError, OSError):
+                    f = None
+                if f:
+                    return self._send(f.read_bytes(), "image/png")
             if self.path.startswith("/media/") and app.survey:
                 name = Path(self.path[len("/media/"):]).name  # no directory tricks
                 f = app.survey.media / name
@@ -128,8 +136,9 @@ def make_handler(app: App):
                 if not self._ready():
                     return
                 ids = [int(i) for i in body.get("passes", []) if 0 <= int(i) < len(app.survey.passes)]
-                app.survey.label(ids, body.get("label"))
-                return self._json(app.survey.summary())
+                with app.lock:   # one retrain at a time: quick review sends labels back to back
+                    app.survey.label(ids, body.get("label"))
+                    return self._json(app.survey.summary())
             if self.path == "/api/export":
                 return self._ready() and self._json(report.export(app.survey))
             return self._json({"error": "not found"}, 404)
