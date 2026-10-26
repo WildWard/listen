@@ -8,8 +8,8 @@ from scipy import signal
 
 from .detect import SR
 
-# magma-like ramp: night -> violet -> magenta -> amber -> pale
-_STOPS = np.array([[10, 21, 16], [59, 15, 112], [181, 54, 122], [233, 160, 75], [252, 239, 180]], np.float32)
+# magma-like ramp: night (the app's background ink) -> violet -> magenta -> amber -> pale
+_STOPS = np.array([[9, 13, 22], [59, 15, 112], [181, 54, 122], [233, 160, 75], [252, 239, 180]], np.float32)
 
 
 def _colour(v: np.ndarray) -> np.ndarray:

@@ -147,6 +147,16 @@ class Survey:
                 media.spectrogram_png(clip, self.media / f"{p['id']}.png")
                 media.slowed_wav(clip, self.media / f"{p['id']}.wav")
 
+    def big_spectrogram(self, pid: int) -> Path:
+        """A large, sharp spectrogram for the one-at-a-time review screen, drawn on first request and cached."""
+        out = self.media / f"{pid}_big.png"
+        if not out.exists():
+            p = self.passes[pid]
+            x = detect.load(self.folder / p["file"], self.time_expansion)
+            clip = x[int(p["start"] * detect.SR): int(p["end"] * detect.SR)][: detect.SR * 2]
+            media.spectrogram_png(clip, out, width=1200, height=540)
+        return out
+
     def cluster(self, threshold: float = 0.25) -> None:
         if len(self.passes) < 2:
             for p in self.passes:
@@ -168,7 +178,7 @@ class Survey:
             # remember what Listen suggested before the expert decided: that's how it checks itself on this survey
             if label and not p["label"] and p.get("suggestion") and not label.lower().startswith("unknown"):
                 p["check"] = {"suggested": p["suggestion"], "confidence": p["confidence"],
-                              "right": p["suggestion"] == label,
+                              "right": p["suggestion"] == label or (p.get("genus") or "") == label,  # confirming the genus Listen offered counts too
                               "genus_right": p["suggestion"].split()[0] == label.split()[0]}
             elif not label:
                 p.pop("check", None)
@@ -206,7 +216,7 @@ class Survey:
             X_parts.append(own[idx]); y_parts.append(np.array([p["label"] for p in labelled]))
             w_parts.append(np.full(len(idx), 3.0))
         for p in self.passes:
-            p["suggestion"], p["confidence"], p["genus"], p["genus_confidence"] = None, None, None, None
+            p["suggestion"], p["confidence"], p["genus"], p["genus_confidence"], p["top"] = None, None, None, None, []
         self.flag_unusual()
         if not X_parts:
             return
@@ -226,6 +236,8 @@ class Survey:
         for p, pr in zip(todo, proba):
             k = int(pr.argmax())
             p["suggestion"], p["confidence"] = str(clf.classes_[k]), round(calibrated(float(pr[k]), "species"), 3)
+            # runners-up for one-key review: the right answer is often second when the top guess is wrong
+            p["top"] = [[str(clf.classes_[j]), round(calibrated(float(pr[j]), "species"), 3)] for j in pr.argsort()[::-1][:3]]
             # when the species is uncertain but the genus isn't, say the genus: at new sites this was
             # right 94% of the time vs 80% for confident species calls (batlab accuracy_eval)
             gp = np.array([pr[genus_of == g].sum() for g in genera])
@@ -389,7 +401,7 @@ class Survey:
                 "passes": [{k: v for k, v in p.items() if k != "calls"} for p in self.passes],
                 "clusters": sorted(clusters.values(), key=lambda c: c["id"]), "skipped": self.skipped,
                 "activity": activity, "time_source": sorted(s for s in sources if s),
-                "known_species": self.known_species(), "sites": sites, "nights": nights, "wind": self.wind_risk(),
+                "known_species": self.known_species(), "bands": self.known_frequencies(), "sites": sites, "nights": nights, "wind": self.wind_risk(),
                 "self_check": self.self_check(),
                 "reference": {"path": self.reference_path, "species": len(self.reference["species"]),
                               "passes": int(len(self.reference["y"]))} if self.reference else None}
