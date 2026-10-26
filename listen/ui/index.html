@@ -199,7 +199,7 @@ let survey = null, view = "quick", poller = null;
 const expanded = new Set(), unpicked = new Set();
 const COLORS = ["#79c2a0", "#f0b44c", "#7fb3d8", "#d98ab5", "#c9c36a", "#9a8fd9", "#e7735e", "#5fbfa8"];
 // spectrogram images span 10-190 kHz, high frequencies on top, first 2 s of the pass (listen/media.py)
-const KHZ_MIN = 10, KHZ_MAX = 190, CLIP_S = 2;
+const KHZ_MIN = 10, KHZ_MAX = 190, CLIP_S = 2;   // the image is stretched to the pass's own length, up to CLIP_S
 const khzTop = f => 100 * (KHZ_MAX - f) / (KHZ_MAX - KHZ_MIN);
 
 function applyStatic() {
@@ -351,7 +351,10 @@ try { Q.autoplay = localStorage.getItem("wildward-autoplay") !== "0"; } catch (e
 function buildQueue() {
   const P = survey.passes, prio = {};
   survey.clusters.forEach(c => { prio[c.id] = c.priority; });
+  // #pass=<id> opens Quick review on that pass (handy for sharing "look at this one" with a colleague)
+  const want = +((location.hash.match(/pass=(\d+)/) || [])[1] ?? -1);
   Q.order = P.filter(p => !p.label).sort((a, b) => (prio[b.cluster] - prio[a.cluster]) || (a.cluster - b.cluster) || ((a.confidence ?? 0) - (b.confidence ?? 0))).map(p => p.id);
+  if (want >= 0 && Q.order.includes(want)) Q.order = [want, ...Q.order.filter(i => i !== want)];
   Q.pos = 0;
 }
 
@@ -385,7 +388,7 @@ function renderQuick() {
   const known = (survey.known_species || []).length;
   const bands = nearBands(fc);
   const tm = (p.time || {}).iso ? p.time.iso.slice(11, 16) : null;
-  const dur = Math.min(CLIP_S, p.end - p.start);
+  const dur = Math.max(0.05, Math.min(CLIP_S, p.end - p.start));
   $("#main").innerHTML = `<div class="qr">
     <section aria-label="${t("Quick review")}">
       <div class="qmeta"><span><b>${left}</b> ${t("left to review")}</span><span>${t("Group {0}", p.cluster + 1)}</span><span>${esc(p.file)} · ${p.start.toFixed(1)} s</span>${tm ? `<span>${tm}</span>` : ""}</div>
@@ -395,7 +398,7 @@ function renderQuick() {
           <img src="/big/${p.id}.png?v=2" alt="${t("Spectrogram of this pass, 10 to 190 kHz")}" data-qplay="1">
           ${[20, 40, 60, 80, 100, 120, 140, 160, 180].map(f => `<div class="grid-line" style="top:${khzTop(f)}%"></div>`).join("")}
           ${fc ? `<div class="fc" style="top:${khzTop(fc)}%"><span>${(+fc).toFixed(1)} kHz</span></div>` : ""}
-          ${[0, 0.5, 1, 1.5, 2].filter(s => s <= dur + 0.01).map(s => `<span class="time" style="left:${100 * s / CLIP_S}%">${s} s</span>`).join("")}
+          ${[0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].filter((s, i) => s <= dur - 0.05 && (dur > 1 ? i % 2 === 0 : true)).map(s => `<span class="time" style="left:${100 * s / dur}%">${s} s</span>`).join("")}
         </div>
         <div class="rail" aria-label="${t("Known species near this frequency")}">${bands.length ? `<span class="cap">${t("Known bands")}</span>` : ""}${bands.map(b => `<i class="tick ${b.near ? "near" : ""}" style="top:${khzTop(b.khz)}%"></i><div class="band ${b.near ? "near" : ""}" data-top="${khzTop(b.khz)}" style="top:${khzTop(b.khz)}%"><em>${esc(abbr(b.sp))}</em><small>${b.khz.toFixed(0)}</small></div>`).join("")}</div>
       </div>
@@ -408,13 +411,13 @@ function renderQuick() {
         <div class="verdict">
           <div class="grow">
             <p class="eyebrow">${pr ? (pr.genus ? t("Listen suggests the genus") : t("Listen suggests")) : p.label ? t("Already labelled") : t("No suggestion yet")}</p>
-            ${pr ? `<p class="name">${esc(pr.label)}${pr.genus ? " sp." : ""}</p>` : `<p class="name plain">${p.label ? t("Press S to keep it, or pick a new label.") : known < 2 ? t("Label two species and Listen starts suggesting.") : t("Type the species.")}</p>`}
-            ${pr && pr.conf != null ? `<div class="level"><span class="bar"><i style="width:${Math.round(pr.conf * 100)}%"></i></span>${Math.round(pr.conf * 100)}%${pr.conf < 0.7 ? " · " + t("(unsure)") : ""}</div>` : pr ? `<p class="sub">${t("closest of the {0} species it knows: {1}", known, esc(pr.label))}</p>` : ""}
+            ${pr ? `<p class="name ${pr.label.startsWith("Unknown") ? "plain" : ""}">${esc(pr.label)}${pr.genus ? " sp." : ""}</p>` : `<p class="name plain">${p.label ? t("Press S to keep it, or pick a new label.") : known < 2 ? t("Label two species and Listen starts suggesting.") : t("Type the species.")}</p>`}
+            ${pr && pr.conf != null ? `<div class="level"><span class="bar"><i style="width:${pct99(pr.conf)}%"></i></span>${pct99(pr.conf)}%${pr.conf < 0.7 ? " · " + t("(unsure)") : ""}</div>` : pr ? `<p class="sub">${t("closest of the {0} species it knows: {1}", known, esc(pr.label))}</p>` : ""}
             ${pr && pr.genus ? `<p class="sub">${t("Best species guess: {0} ({1}%)", `<i class="tx">${esc(p.suggestion)}</i>`, Math.round(p.confidence * 100))}</p>` : ""}
           </div>
           ${pr ? `<button class="btn" data-qlabel="${esc(pr.label)}" aria-keyshortcuts="Enter">${t("Confirm")} <kbd>Enter</kbd></button>` : ""}
         </div>
-        ${alts.length ? `<div class="alts" aria-label="${t("Other likely species")}">${alts.map((a, i) => `<button class="alt" data-qlabel="${esc(a[0])}" aria-keyshortcuts="${i + 1}"><kbd>${i + 1}</kbd><em>${esc(a[0])}</em>${known >= 5 ? `<small>${Math.round(a[1] * 100)}%</small>` : ""}</button>`).join("")}</div>` : ""}
+        ${alts.length ? `<div class="alts" aria-label="${t("Other likely species")}">${alts.map((a, i) => `<button class="alt" data-qlabel="${esc(a[0])}" aria-keyshortcuts="${i + 1}"><kbd>${i + 1}</kbd><em>${esc(a[0])}</em>${known >= 5 ? `<small>${pct99(a[1])}%</small>` : ""}</button>`).join("")}</div>` : ""}
         <div class="qactions">
           <input class="field" id="qtype" type="text" list="species" placeholder="${t("Another species or genus…")}" aria-label="${t("Type a species or genus, then press Enter")}" aria-keyshortcuts="/">
           <button class="btn ghost" data-qlabel="Unknown (not in library)" aria-keyshortcuts="N" title="${t("For bats that aren't in your library. WildWard learns to send similar passes here instead of guessing a wrong species.")}">${t("Not in my library")} <kbd>N</kbd></button>
@@ -431,9 +434,9 @@ function renderQuick() {
       <div class="card"><p class="eyebrow">${t("How Listen is doing here")}</p>${quickCheck()}</div>
       <div class="card"><p class="eyebrow">${t("Call measures")}</p>
         ${m.f_char_khz ? `<dl class="measures">
-          <dt>${t("Characteristic frequency")}</dt><dd>${m.f_char_khz} kHz</dd>
-          <dt>${t("Start / end")}</dt><dd>${m.f_start_khz ?? "–"} / ${m.f_end_khz ?? "–"} kHz</dd>
-          <dt>${t("Duration")}</dt><dd>${m.duration_ms ?? "–"} ms</dd>
+          <dt>${t("Characteristic frequency")}</dt><dd>${r1(m.f_char_khz)} kHz</dd>
+          <dt>${t("Start / end")}</dt><dd>${r1(m.f_start_khz)}–${r1(m.f_end_khz)} kHz</dd>
+          <dt>${t("Duration")}</dt><dd>${r1(m.duration_ms)} ms</dd>
           <dt>${t("Shape")}</dt><dd>${esc(m.shape || "–")}</dd>
           <dt>${t("Calls measured")}</dt><dd>${m.n_calls ?? "–"}</dd></dl>` : `<p class="note">${t("Too faint to measure.")}</p>`}
         ${(p.sound || {}).hint ? `<p class="note" style="margin-top:10px">${esc(p.sound.hint)}</p>` : ""}</div>
@@ -739,6 +742,9 @@ const esc = s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;"
 const topKey = o => Object.entries(o || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
 const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
 const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+// a model is never 100% sure of a wild recording, so the display tops out at 99
+const pct99 = v => Math.min(99, Math.round(v * 100));
+const r1 = v => v == null ? "–" : (+v).toFixed(1);
 const shortName = f => f.split(/[\\/]/).pop().slice(0, 18);
 boot();
 </script>
