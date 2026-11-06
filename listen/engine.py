@@ -48,6 +48,32 @@ def calibrated(raw: float, kind: str) -> float:
 
 SURE = 0.7           # name a species at 70%+ confidence; below that, fall back to a confident genus
 
+# Recording conditions. The same bat calls differently in open air, along an edge or in clutter, and differently
+# again when released from the hand or flying in a tent (ChiroVox team, 2026-11). Recorded with the survey and
+# exported with every pass, so labelled passes become documented reference calls. Not used by the classifier yet:
+# that needs training calls with the same fields filled in (batlab Test 13).
+CONTEXT_OPTIONS = {
+    "habitat": ["open space", "edge", "clutter", "over water", "at roost"],
+    "method": ["static detector", "walked transect", "hand release", "flight tent or enclosure", "hand held"],
+}
+
+
+def clean_context(ctx: dict) -> dict:
+    out = {}
+    for k in ("habitat", "method"):
+        if ctx.get(k) in CONTEXT_OPTIONS[k]:
+            out[k] = ctx[k]
+    try:
+        h = float(ctx.get("height_m"))
+        if 0 <= h <= 500:
+            out["height_m"] = round(h, 1)
+    except (TypeError, ValueError):
+        pass
+    note = str(ctx.get("note") or "").strip()[:200]
+    if note:
+        out["note"] = note
+    return out
+
 
 class Survey:
     def __init__(self, folder: Path, time_expansion: int = 1):
@@ -63,6 +89,7 @@ class Survey:
         self.reference_path: str | None = None
         self.reference_te = 1
         self.reference: dict | None = None
+        self.context: dict = {"survey": {}, "sites": {}}   # recording conditions: survey-wide, then per detector
         if self.state_path.exists():
             self._load()
 
@@ -71,6 +98,7 @@ class Survey:
         s = json.loads(self.state_path.read_text(encoding="utf8"))
         self.passes, self.skipped = s["passes"], s.get("skipped", [])
         self.files_meta = s.get("files_meta", {})
+        self.context = s.get("context") or {"survey": {}, "sites": {}}
         self.time_expansion = s.get("time_expansion", self.time_expansion)
         self.emb = np.load(self.dir / "embeddings.npy")
         self.reference_path, self.reference_te = s.get("reference_path"), s.get("reference_te", 1)
@@ -85,7 +113,7 @@ class Survey:
         self.dir.mkdir(exist_ok=True)
         self.state_path.write_text(json.dumps({"passes": self.passes, "skipped": self.skipped,
                                                "time_expansion": self.time_expansion, "reference_path": self.reference_path,
-                                               "files_meta": self.files_meta,
+                                               "files_meta": self.files_meta, "context": self.context,
                                                "reference_te": self.reference_te, "saved": time.time()},
                                               indent=1), encoding="utf8")
         np.save(self.dir / "embeddings.npy", self.emb)
@@ -321,22 +349,38 @@ class Survey:
         return {"labelled": n_lab, "by_sound": n_snd, "by_hour": by_hour,
                 "top_nights": sorted(by_night.items(), key=lambda kv: -kv[1])[:5], "nights": len(by_night)}
 
+    def site_of(self, rel: str) -> str | None:
+        """The detector a recording came from: its serial number, else its GPS position."""
+        m = self.files_meta.get(rel, {})
+        return m.get("serial") or (f"{m['lat']:.4f},{m['lon']:.4f}" if "lat" in m else None)
+
+    def set_context(self, site: str | None, ctx: dict) -> None:
+        """Recording conditions for the whole survey (site None) or one detector; a detector's fields win."""
+        ctx = clean_context(ctx)
+        if site is None:
+            self.context["survey"] = ctx
+        elif ctx:
+            self.context["sites"][site] = ctx
+        else:
+            self.context["sites"].pop(site, None)
+        self.save()
+
+    def context_for(self, rel: str) -> dict:
+        return self.context.get("survey", {}) | self.context.get("sites", {}).get(self.site_of(rel) or "", {})
+
     def sites_and_nights(self) -> tuple[list[dict], list[dict]]:
         """Detector sites (from GUANO / AudioMoth metadata) and activity per night across the survey.
         A night runs noon to noon, so passes after midnight count with the evening they started."""
         sites = {}
         for rel, m in self.files_meta.items():
-            if "lat" in m:
-                key = m.get("serial") or f"{m['lat']:.4f},{m['lon']:.4f}"
-            elif m.get("serial"):
-                key = m["serial"]
-            else:
+            key = self.site_of(rel)
+            if not key:
                 continue
             s = sites.setdefault(key, {"id": key, "lat": m.get("lat"), "lon": m.get("lon"), "device": m.get("device"),
-                                       "files": 0, "passes": 0, "groups": {}})
+                                       "files": 0, "passes": 0, "groups": {},
+                                       "context": self.context.get("sites", {}).get(key, {})})
             s["files"] += 1
-        file_site = {rel: (m.get("serial") or (f"{m['lat']:.4f},{m['lon']:.4f}" if "lat" in m else None))
-                     for rel, m in self.files_meta.items()}
+        file_site = {rel: self.site_of(rel) for rel in self.files_meta}
         nights = {}
         for p in self.passes:
             g = self.who(p)
@@ -403,5 +447,6 @@ class Survey:
                 "activity": activity, "time_source": sorted(s for s in sources if s),
                 "known_species": self.known_species(), "bands": self.known_frequencies(), "sites": sites, "nights": nights, "wind": self.wind_risk(),
                 "self_check": self.self_check(),
+                "context": self.context.get("survey", {}), "context_options": CONTEXT_OPTIONS,
                 "reference": {"path": self.reference_path, "species": len(self.reference["species"]),
                               "passes": int(len(self.reference["y"]))} if self.reference else None}

@@ -139,6 +139,12 @@ def make_handler(app: App):
                 with app.lock:   # one retrain at a time: quick review sends labels back to back
                     app.survey.label(ids, body.get("label"))
                     return self._json(app.survey.summary())
+            if self.path == "/api/context":
+                if not self._ready():
+                    return
+                with app.lock:
+                    app.survey.set_context(body.get("site") or None, body.get("context") or {})
+                    return self._json(app.survey.summary())
             if self.path == "/api/export":
                 return self._ready() and self._json(report.export(app.survey))
             return self._json({"error": "not found"}, 404)
