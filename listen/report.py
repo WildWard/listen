@@ -23,6 +23,9 @@ def export(survey: Survey) -> dict:
                   "sound_type": (p.get("sound") or {}).get("type", ""),
                   "unusual_frequency": "yes" if p.get("unusual") else "",
                   "nearest_known_species": (p.get("unusual") or {}).get("nearest", "")})
+        ctx = survey.context_for(p["file"])
+        r.update({"habitat": ctx.get("habitat", ""), "recording_method": ctx.get("method", ""),
+                  "height_m": ctx.get("height_m", ""), "conditions_note": ctx.get("note", "")})
     csv_path = out / "passes.csv"
     with csv_path.open("w", newline="", encoding="utf8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]) if rows else ["file"])
@@ -33,8 +36,10 @@ def export(survey: Survey) -> dict:
     call_rows = []
     for p in survey.passes:
         for c in p.get("calls", []):
+            ctx = survey.context_for(p["file"])
             call_rows.append({"file": p["file"], "pass_id": p["id"], "pass_start_s": p["start"],
-                              "species": p["label"] or p["suggestion"] or "", "reviewed": "yes" if p["label"] else "no"} | c)
+                              "species": p["label"] or p["suggestion"] or "", "reviewed": "yes" if p["label"] else "no",
+                              "habitat": ctx.get("habitat", ""), "recording_method": ctx.get("method", "")} | c)
     with calls_path.open("w", newline="", encoding="utf8") as f:
         w = csv.DictWriter(f, fieldnames=list(call_rows[0]) if call_rows else ["file"])
         w.writeheader()
@@ -68,6 +73,12 @@ def export(survey: Survey) -> dict:
                 f"known species' frequency (around {', '.join(sorted({f'{p["unusual"]["f_khz"]:.0f}' for p in odd}, key=float))} kHz). "
                 "They may be species missing from the reference library, or worth a closer look. Listed in passes.csv as "
                 "<code>unusual_frequency = yes</code>.</p>") if odd else ""
+    conds = [(None, survey.context.get("survey", {}))] + list(survey.context.get("sites", {}).items())
+    cond_note = "".join(
+        f"<li>{html.escape(site or 'All detectors')}: " + html.escape(", ".join(str(x) for x in (
+            c.get("habitat"), c.get("method"), f"microphone {c['height_m']} m up" if c.get("height_m") is not None else None,
+            c.get("note")) if x)) + "</li>" for site, c in conds if c)
+    cond_note = f"<h2>Recording conditions</h2><ul>{cond_note}</ul>" if cond_note else ""
     page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Survey report</title>
 <style>body{{font:16px/1.5 system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 16px;color:#12201a}}
 h1{{margin:0 0 4px}}table{{border-collapse:collapse;width:100%;margin:16px 0}}td,th{{border-bottom:1px solid #ddd;padding:8px;text-align:left}}
@@ -76,6 +87,7 @@ h1{{margin:0 0 4px}}table{{border-collapse:collapse;width:100%;margin:16px 0}}td
 <p class="note">{html.escape(str(survey.folder))} · generated {datetime.now():%Y-%m-%d %H:%M} with WildWard Listen</p>
 <p><b>{len(survey.passes)}</b> bat passes in <b>{files}</b> recordings. <b>{sum(reviewed.values())}</b> reviewed by an expert,
 <b>{sum(suggested.values())}</b> suggested by the model and not yet reviewed, <b>{unknown}</b> unidentified.</p>
+{cond_note}
 {odd_note}
 {wind_note}
 <table><tr><th>Species</th><th>Reviewed passes</th><th>Suggested, unreviewed</th></tr>{table}</table>
@@ -89,7 +101,7 @@ suggestions as leads, not identifications. Skipped files: {len(survey.skipped)}.
 
 DWC_FIELDS = ["occurrenceID", "basisOfRecord", "eventDate", "scientificName", "taxonRank", "kingdom", "phylum", "class",
               "order", "decimalLatitude", "decimalLongitude", "geodeticDatum", "organismQuantity", "organismQuantityType",
-              "samplingProtocol", "identificationVerificationStatus", "identificationRemarks", "associatedMedia",
+              "samplingProtocol", "habitat", "identificationVerificationStatus", "identificationRemarks", "associatedMedia",
               "occurrenceRemarks"]
 
 
@@ -103,6 +115,7 @@ def darwin_core(survey: Survey) -> tuple[Path, int]:
         if not name or name.lower().startswith("unknown"):
             continue
         meta = survey.files_meta.get(p["file"], {})
+        ctx = survey.context_for(p["file"])
         m = p.get("measures") or {}
         parts = [f"{k} {m[k]}" for k in ("f_char_khz", "duration_ms") if m.get(k) is not None]
         rows.append({
@@ -115,7 +128,10 @@ def darwin_core(survey: Survey) -> tuple[Path, int]:
             "decimalLatitude": meta.get("lat", ""), "decimalLongitude": meta.get("lon", ""),
             "geodeticDatum": "WGS84" if "lat" in meta else "",
             "organismQuantity": 1, "organismQuantityType": "bat passes",
-            "samplingProtocol": "passive acoustic monitoring" + (f", {meta['device']}" if meta.get("device") else ""),
+            "samplingProtocol": ", ".join(x for x in (
+                "acoustic recording, " + ctx["method"] if ctx.get("method") else "passive acoustic monitoring",
+                meta.get("device"), f"microphone {ctx['height_m']} m above ground" if ctx.get("height_m") is not None else None) if x),
+            "habitat": "; ".join(x for x in (ctx.get("habitat"), ctx.get("note")) if x),
             "identificationVerificationStatus": "verified by expert",
             "identificationRemarks": "identified from echolocation calls; reviewed in WildWard Listen",
             "associatedMedia": p["file"],

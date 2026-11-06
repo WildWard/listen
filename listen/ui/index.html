@@ -653,9 +653,31 @@ function windHtml() {
     <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Open-air forager passes per hour">${bars}</svg></section>`;
 }
 
+// Recording conditions: one row for the whole survey, one per detector that overrides it. Saved on every change.
+function conditionsHtml(sites) {
+  const opt = survey.context_options || {};
+  const sel = (site, field, cur, blank) => `<select data-ctx="${esc(site)}" data-field="${field}" aria-label="${t(field === "habitat" ? "Habitat" : "Recording method")}">
+    <option value="">${blank}</option>${(opt[field] || []).map(v => `<option value="${esc(v)}" ${cur === v ? "selected" : ""}>${t(v)}</option>`).join("")}</select>`;
+  const row = (site, name, c, blank) => `<tr><td>${esc(name)}</td><td>${sel(site, "habitat", c.habitat, blank)}</td><td>${sel(site, "method", c.method, blank)}</td>
+    <td><input class="field" style="width:6em" type="number" min="0" max="500" step="0.5" data-ctx="${esc(site)}" data-field="height_m" value="${c.height_m ?? ""}" aria-label="${t("Microphone height (m)")}"></td>
+    <td><input class="field" type="text" maxlength="200" data-ctx="${esc(site)}" data-field="note" value="${esc(c.note || "")}" placeholder="${t("e.g. forest trail, river bank")}" aria-label="${t("Note")}"></td></tr>`;
+  return `<section class="panel"><h2>${t("Recording conditions")}</h2>
+    <p class="hint">${t("The same bat calls differently in open space, along an edge or in clutter, and differently again after a hand release. Note how this survey was recorded: it goes into passes.csv, calls.csv and the Darwin Core export, so your labelled passes become documented reference calls. Listen does not use it for identification yet.")}</p>
+    <div style="overflow-x:auto"><table class="sum"><tr><th>${t("Detector")}</th><th>${t("Habitat")}</th><th>${t("Recording method")}</th><th>${t("Microphone height (m)")}</th><th>${t("Note")}</th></tr>
+    ${row("", t("Whole survey"), survey.context || {}, t("not set"))}
+    ${sites.map(s => row(s.id, s.id, s.context || {}, t("same as survey"))).join("")}</table></div></section>`;
+}
+
+async function saveContext(site) {
+  const ctx = {};
+  document.querySelectorAll(`[data-ctx="${CSS.escape(site)}"]`).forEach(el => { if (el.value !== "") ctx[el.dataset.field] = el.value; });
+  survey = await (await fetch("/api/context", { method: "POST", body: JSON.stringify({ site, context: ctx }) })).json();
+  toast(t("Recording conditions saved."));
+}
+
 function seasonHtml() {
   const sites = survey.sites || [], nights = survey.nights || [];
-  let out = "";
+  let out = conditionsHtml(sites);
   const located = sites.filter(s => s.lat != null);
   if (located.length) {
     // offline "map": detector positions scaled to their bounding box, north up
@@ -733,7 +755,8 @@ $("#export").onclick = async () => {
   const r = await (await fetch("/api/export", { method: "POST" })).json();
   toast(t("Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html and occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF)", r.n_occurrences ?? 0));
 };
-$("#openOther").onclick = () => showStart({ folder: survey && survey.folder });
+document.addEventListener("change", e => { if (e.target.dataset && "ctx" in e.target.dataset) saveContext(e.target.dataset.ctx); });
+$("#openOther").onclick =() => showStart({ folder: survey && survey.folder });
 $("#lang").onchange = e => { setLang(e.target.value); applyStatic(); survey ? render() : boot(); };
 applyStatic();
 $("#refBtn").onclick = () => survey && showReference();
