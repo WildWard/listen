@@ -1,6 +1,9 @@
 // Interface translations. English is the source; {0}, {1} are filled in by t().
 // First versions by WildWard's AI assistant: native speakers, please send corrections to wildward.org@gmail.com.
-const LANGS = { en: "English", id: "Bahasa Indonesia", ms: "Bahasa Melayu", vi: "Tiếng Việt", th: "ไทย", fil: "Filipino" };
+const LANGS = { en: "English", id: "Bahasa Indonesia", ms: "Bahasa Melayu", vi: "Tiếng Việt", th: "ไทย", fil: "Filipino", hu: "Magyar" };
+// Languages kept in their own file (i18n_<code>.js) fill these: EXTRA[code] = { "English text": "translation" },
+// PATTERNS[code] = [[regex, replacement], ...] for texts with numbers in them that come from the engine.
+const EXTRA = {}, PATTERNS = {};
 
 const I18N = {
   "passes": { id: "rekaman lintasan", ms: "laluan", vi: "lượt bay", th: "ครั้งที่บินผ่าน", fil: "pagdaan" },
@@ -159,8 +162,18 @@ if (LANG === "tl") LANG = "fil";
 if (!LANGS[LANG]) LANG = "en";
 
 function t(key, ...args) {
-  const s = (LANG !== "en" && I18N[key] && I18N[key][LANG]) || key;
+  const s = (LANG !== "en" && ((I18N[key] && I18N[key][LANG]) || (EXTRA[LANG] && EXTRA[LANG][key]))) || key;
   return s.replace(/\{(\d)\}/g, (_, i) => args[+i] ?? "");
+}
+
+// For texts made by the engine (sound types, scan progress, errors): exact match first, then the patterns.
+function tr(s) {
+  if (LANG === "en" || s == null) return s;
+  s = String(s);
+  const exact = (I18N[s] && I18N[s][LANG]) || (EXTRA[LANG] && EXTRA[LANG][s]);
+  if (exact) return exact;
+  for (const [re, to] of PATTERNS[LANG] || []) if (re.test(s)) return s.replace(re, to);
+  return s;
 }
 
 function setLang(code) {

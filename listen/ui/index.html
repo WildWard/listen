@@ -184,7 +184,7 @@ table.sum th { font: 600 11px var(--display); letter-spacing: .12em; text-transf
       <button class="btn ghost" id="openOther" data-t="Open another survey">Open another survey</button>
       <button class="btn" id="export" data-t="Export">Export</button>
     </div>
-    <select id="lang" aria-label="Language" class="lang"></select>
+    <select id="lang" aria-label="Language / Nyelv" class="lang"></select>
   </div>
   <nav class="tabs" id="tabs" aria-label="View" hidden></nav>
 </header>
@@ -193,6 +193,7 @@ table.sum th { font: 600 11px var(--display); letter-spacing: .12em; text-transf
 <div id="toast" role="status"></div>
 <audio id="player"></audio>
 <script src="/i18n.js"></script>
+<script src="/i18n_hu.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 let survey = null, view = "quick", poller = null;
@@ -242,7 +243,7 @@ function showStart(st = {}) {
     <p class="hint">${t("Point WildWard Listen at a folder of bat-detector recordings (WAV). It finds every bat pass, groups similar calls and measures them, all on this computer. Results are saved inside the folder, so you can close the app any time.")}</p>
     ${LANG !== "en" ? `<p class="hint">${t("Translations are a first draft. Corrections welcome: wildward.org@gmail.com")}</p>` : ""}
     <label for="f">${t("Folder with recordings")}</label>
-    <div class="pickrow"><input id="f" type="text" placeholder="e.g. D:\\Surveys\\Taman Negara night 1" value="${esc(st.folder || "")}">${browseBtn("f")}</div>
+    <div class="pickrow"><input id="f" type="text" placeholder="${esc(t("e.g. D:\\Surveys\\Taman Negara night 1"))}" value="${esc(st.folder || "")}">${browseBtn("f")}</div>
     ${inWindow() ? `<p class="hint" style="margin-top:8px">${t("Or drag a folder of recordings onto this window.")}</p>` : ""}
     <label for="te">${t("How were the files recorded?")}</label>
     <select id="te">
@@ -252,12 +253,12 @@ function showStart(st = {}) {
     </select>
     <label class="check"><input type="checkbox" id="rescan"> ${t("Scan again even if results already exist")}</label>
     <p style="margin:22px 0 0"><button class="btn" id="go">${t("Scan recordings")}</button></p>
-    ${st.state === "error" ? `<div class="log">${esc((st.log || []).join("\n"))}</div>` : ""}
+    ${st.state === "error" ? `<div class="log">${esc((st.log || []).map(tr).join("\n"))}</div>` : ""}
   </section>`;
   $("#go").onclick = async () => {
     const r = await fetch("/api/open", { method: "POST", body: JSON.stringify({ folder: $("#f").value.trim(), te: +$("#te").value, rescan: $("#rescan").checked }) });
     const j = await r.json();
-    if (j.error) return toast(j.error);
+    if (j.error) return toast(tr(j.error));
     boot();
   };
 }
@@ -267,10 +268,10 @@ function showReference() {
   $("#main").innerHTML = `<section class="start">
     <p class="eyebrow">${t("Reference library")}</p>
     <h2>${t("Learn species")}</h2>
-    <p class="hint">${t("Teach WildWard Listen the species you already know. Pick a folder with one sub-folder per species, named exactly as it should appear, for example {0}. WildWard learns them before you review anything, then suggests species for this survey with a confidence score. Your own labels from this survey always count more than the library.", "<code>My calls&#92;Hipposideros larvatus&#92;*.wav</code>")}</p>
+    <p class="hint">${t("Teach WildWard Listen the species you already know. Pick a folder with one sub-folder per species, named exactly as it should appear, for example {0}. WildWard learns them before you review anything, then suggests species for this survey with a confidence score. Your own labels from this survey always count more than the library.", `<code>${esc(t("My calls\\Hipposideros larvatus\\*.wav"))}</code>`)}</p>
     ${r ? `<p class="hint">${t("Current library: {0}, {1} species, {2} reference passes.", `<b>${esc(r.path)}</b>`, r.species, r.passes)}</p>` : ""}
     <label for="rf">${t("Reference folder")}</label>
-    <div class="pickrow"><input id="rf" type="text" placeholder="e.g. D:&#92;Bat calls&#92;Malaysia reference" value="${esc(r ? r.path : "")}">${browseBtn("rf")}</div>
+    <div class="pickrow"><input id="rf" type="text" placeholder="${esc(t("e.g. D:\\Bat calls\\Malaysia reference"))}" value="${esc(r ? r.path : "")}">${browseBtn("rf")}</div>
     <label for="rte">${t("How were the reference files recorded?")}</label>
     <select id="rte"><option value="1">${t("Real time (192 kHz or higher)")}</option><option value="10">${t("Time-expanded 10x")}</option><option value="16">${t("Time-expanded 16x")}</option></select>
     <p class="hint" style="margin-top:8px">${t("Mixed formats? Put a file named te.txt containing 10 or 16 inside any species folder that is time-expanded.")}</p>
@@ -280,7 +281,7 @@ function showReference() {
   </section>`;
   const go = async folder => {
     const res = await (await fetch("/api/reference", { method: "POST", body: JSON.stringify({ folder, te: +$("#rte").value }) })).json();
-    if (res.error) return toast(res.error);
+    if (res.error) return toast(tr(res.error));
     showScanning();
   };
   $("#learn").onclick = () => { const f = $("#rf").value.trim(); if (!f) return toast(t("Type the reference folder first.")); go(f); };
@@ -296,7 +297,7 @@ function showScanning() {
   clearInterval(poller);
   poller = setInterval(async () => {
     const st = await (await fetch("/api/status")).json();
-    if ($("#log")) $("#log").textContent = st.log.join("\n");
+    if ($("#log")) $("#log").textContent = st.log.map(tr).join("\n");
     if (st.state !== "scanning") { clearInterval(poller); boot(); }
   }, 1200);
 }
@@ -336,7 +337,7 @@ function render() {
     return view === "all" || (view === "done" ? done : !done);
   });
   if (view === "todo") groups = [...groups].sort((a, b) => b.priority - a.priority);
-  if (!P.length) body += `<p class="empty">No bat passes found in this folder${survey.skipped.length ? ` (${survey.skipped.length} files skipped: ${esc(survey.skipped[0].reason)})` : ""}.</p>`;
+  if (!P.length) body += `<p class="empty">${t("No bat passes found in this folder.")}${survey.skipped.length ? " " + t("{0} files skipped: {1}", survey.skipped.length, esc(tr(survey.skipped[0].reason))) : ""}</p>`;
   else if (!groups.length) body += `<p class="empty">${view === "todo" ? t("Everything is reviewed. Export the results when you're ready.") : t("Nothing here yet.")}</p>`;
   else body += groups.map(groupHtml).join("");
   $("#main").innerHTML = body;
@@ -375,7 +376,7 @@ function primary(p) {
 
 function renderQuick() {
   const p = quickPass();
-  if (!survey.passes.length) { $("#main").innerHTML = `<p class="empty">No bat passes found in this folder.</p>`; return; }
+  if (!survey.passes.length) { $("#main").innerHTML = `<p class="empty">${t("No bat passes found in this folder.")}</p>`; return; }
   if (!p) {
     $("#main").innerHTML = `<section class="start" style="text-align:center"><p class="eyebrow">${t("Quick review")}</p>
       <h2>${t("Everything is reviewed. Export the results when you're ready.")}</h2>
@@ -439,7 +440,7 @@ function renderQuick() {
           <dt>${t("Duration")}</dt><dd>${r1(m.duration_ms)} ms</dd>
           <dt>${t("Shape")}</dt><dd>${esc(m.shape || "–")}</dd>
           <dt>${t("Calls measured")}</dt><dd>${m.n_calls ?? "–"}</dd></dl>` : `<p class="note">${t("Too faint to measure.")}</p>`}
-        ${(p.sound || {}).hint ? `<p class="note" style="margin-top:10px">${esc(p.sound.hint)}</p>` : ""}</div>
+        ${(p.sound || {}).hint ? `<p class="note" style="margin-top:10px">${esc(tr(p.sound.hint))}</p>` : ""}</div>
       <div class="card"><p class="eyebrow">${t("Keys")}</p><div class="keys">
         <kbd>Enter</kbd><span>${t("Confirm the suggestion")}</span>
         <kbd>1 2 3</kbd><span>${t("Pick another likely species")}</span>
@@ -544,18 +545,18 @@ function groupHtml(c) {
   const ms = ps.map(p => p.measures).filter(m => m && m.f_char_khz);
   const fc = median(ms.map(m => m.f_char_khz)), dur = median(ms.map(m => m.duration_ms));
   const shown = expanded.has(c.id) ? ps : ps.slice(0, 8);
-  return `<section class="cluster ${done ? "done" : ""}" aria-label="Group ${c.id + 1}">
+  return `<section class="cluster ${done ? "done" : ""}" aria-label="${t("Group {0}", c.id + 1)}">
     <div class="chead"><h2>${t("Group {0}", c.id + 1)}</h2>
       <span class="meta">${t("{0} passes", ps.length)}${ms.length ? ` · ${t("calls around {0} kHz, {1} ms", fc.toFixed(1), dur.toFixed(1))}` : ""}</span>
       ${lab ? `<span class="tag ok"><i class="tx">${esc(lab)}</i></span>` : ""}
       ${sug && !done ? sugTag(sug, conf, ps) : ""}
     </div>
-    ${snd ? `<p class="sound">${t("Sound type:")} ${esc(snd)}</p>` : ""}
+    ${snd ? `<p class="sound">${t("Sound type:")} ${esc(tr(snd))}</p>` : ""}
     ${c.unusual && !done && c.unusual * 2 >= ps.length ? unusualNote(c, ps) : ""}
     <div class="grid">${shown.map(passHtml).join("")}</div>
     ${ps.length > 8 ? `<p><button class="more" data-more="${c.id}">${expanded.has(c.id) ? t("Show fewer") : t("Show all {0} passes", ps.length)}</button></p>` : ""}
     <div class="labelrow">
-      <input type="text" list="species" placeholder="${t("Species or genus, e.g. Hipposideros larvatus")}" aria-label="Label for group ${c.id + 1}" data-input="${c.id}" value="${esc(lab || "")}">
+      <input type="text" list="species" placeholder="${t("Species or genus, e.g. Hipposideros larvatus")}" aria-label="${t("Label for group {0}", c.id + 1)}" data-input="${c.id}" value="${esc(lab || "")}">
       <button class="btn" data-label="${c.id}">${t("Label ticked passes")}</button>
       <button class="btn ghost" data-unknown="${c.id}" title="${t("For bats that aren't in your library. WildWard learns to send similar passes here instead of guessing a wrong species.")}">${t("Not in my library")}</button>
       ${done ? `<button class="btn ghost" data-clear="${c.id}">${t("Clear labels")}</button>` : ""}
@@ -578,15 +579,15 @@ function unusualNote(c, ps) {
 function sugTag(sug, conf, ps) {
   // with only a few labelled species every call gets forced into one of them, so a percentage would be fake
   const n = (survey.known_species || []).length;
-  if (n < 5) return `<span class="tag sug" title="The model can only pick between species it knows">${t("closest of the {0} species it knows: {1}", n, esc(sug))}</span>`;
+  if (n < 5) return `<span class="tag sug" title="${t("The model can only pick between species it knows")}">${t("closest of the {0} species it knows: {1}", n, esc(sug))}</span>`;
   // unsure of the species but sure of the genus: say the genus instead of a likely-wrong species
   const open = ps.filter(p => !p.label), counts = {};
   open.filter(p => p.genus).forEach(p => { counts[p.genus] = (counts[p.genus] || 0) + 1; });
   const g = topKey(counts);
   const gs = open.filter(p => p.genus && p.genus === g);
   if (conf < 0.7 && g && gs.length * 2 >= open.length)
-    return `<span class="tag sug" title="Not sure of the species, but sure of the genus. Best species guess: ${esc(sug)} (${(conf * 100).toFixed(0)}%)">${t("probably {0} (genus)", `<i class="tx">${esc(g)}</i>`)} · ${(mean(gs.map(p => p.genus_confidence)) * 100).toFixed(0)}%</span>`;
-  return `<span class="tag sug" title="Model suggestion, not reviewed">${t("suggested: {0}", `<i class="tx">${esc(sug)}</i>`)} · ${(conf * 100).toFixed(0)}%${conf < 0.7 ? " " + t("(unsure)") : ""}</span>`;
+    return `<span class="tag sug" title="${t("Not sure of the species, but sure of the genus.")} ${t("Best species guess: {0} ({1}%)", esc(sug), (conf * 100).toFixed(0))}">${t("probably {0} (genus)", `<i class="tx">${esc(g)}</i>`)} · ${(mean(gs.map(p => p.genus_confidence)) * 100).toFixed(0)}%</span>`;
+  return `<span class="tag sug" title="${t("Model suggestion, not reviewed")}">${t("suggested: {0}", `<i class="tx">${esc(sug)}</i>`)} · ${(conf * 100).toFixed(0)}%${conf < 0.7 ? " " + t("(unsure)") : ""}</span>`;
 }
 
 function passHtml(p) {
@@ -594,10 +595,10 @@ function passHtml(p) {
   const who = p.label ? `<span class="lab">${esc(p.label)}</span>` : p.genus ? `<span class="sg">${esc(p.genus)} sp.?</span>` : p.suggestion ? `<span class="sg">${esc(p.suggestion)}?</span>` : "";
   const m = p.measures || {};
   return `<div class="pass ${off ? "off" : ""}">
-    <input class="pick" type="checkbox" ${off ? "" : "checked"} data-pick="${p.id}" aria-label="Include pass ${p.id}">
-    <img src="/media/${p.id}.png" alt="Spectrogram of pass ${p.id}" data-play="${p.id}" loading="lazy">
-    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${p.unusual.f_khz} kHz, ${Math.round(p.unusual.gap * 100)}% from the closest known species">${t("unusual")}</b>` : ""} ${who}</span>
-      <button class="play" data-play="${p.id}" aria-label="Play pass ${p.id}, slowed down 10x">▶</button></div></div>`;
+    <input class="pick" type="checkbox" ${off ? "" : "checked"} data-pick="${p.id}" aria-label="${t("Include pass {0}", p.id)}">
+    <img src="/media/${p.id}.png" alt="${t("Spectrogram of pass {0}", p.id)}" data-play="${p.id}" loading="lazy">
+    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${t("{0} kHz, {1}% from the closest known species", p.unusual.f_khz, Math.round(p.unusual.gap * 100))}">${t("unusual")}</b>` : ""} ${who}</span>
+      <button class="play" data-play="${p.id}" aria-label="${t("Play pass {0}, slowed down 10x", p.id)}">▶</button></div></div>`;
 }
 
 // ================= charts =================
@@ -618,20 +619,20 @@ function nightHtml() {
     for (const g of groups) {
       const v = (act[h] || {})[g] || 0; if (!v) continue;
       const hh = (H - 40) * v / max; y -= hh;
-      bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>${String(h).padStart(2, "0")}:00 · ${esc(g)}: ${v}</title></rect>`;
+      bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>${String(h).padStart(2, "0")}:00 · ${esc(tr(g))}: ${v}</title></rect>`;
     }
     bars += axisText(x + bw / 2, H - 8, `${String(h).padStart(2, "0")}h`);
     x += bw + 6;
   }
   const totals = groups.map(g => [g, Object.values(act).reduce((s, o) => s + (o[g] || 0), 0)]).sort((a, b) => b[1] - a[1]);
-  const src = (survey.time_source || []).join(", ");
+  const src = (survey.time_source || []).map(tr).join(", ");
   return `<section class="panel"><h2>${t("Bat activity through the night")}</h2>
-    <p class="hint">${t("Passes per hour, coloured by your labels, or by sound type where nothing is labelled yet. Times from: {0}.", esc(src || "unknown"))}</p>
-    <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Bat passes per hour">${bars}</svg>
-    <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(g)}</span>`).join("")}</div></section>
+    <p class="hint">${t("Passes per hour, coloured by your labels, or by sound type where nothing is labelled yet. Times from: {0}.", esc(src || t("unknown")))}</p>
+    <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="${t("Bat passes per hour")}">${bars}</svg>
+    <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(tr(g))}</span>`).join("")}</div></section>
     ${windHtml()}
     <section class="panel"><h2>${t("Summary")}</h2><table class="sum"><tr><th>${t("Group")}</th><th>${t("Passes")}</th></tr>
-    ${totals.map(([g, n]) => `<tr><td>${esc(g)}</td><td>${n}</td></tr>`).join("")}</table></section>`;
+    ${totals.map(([g, n]) => `<tr><td>${esc(tr(g))}</td><td>${n}</td></tr>`).join("")}</table></section>`;
 }
 
 function windHtml() {
@@ -650,7 +651,7 @@ function windHtml() {
   const top = (w.top_nights || []).slice(0, 3).map(([d, c]) => `${d} (${c})`).join(", ");
   return `<section class="panel"><h2>${t("Open-air foragers (wind-turbine risk)")}</h2>
     <p class="hint">${t("Bats that hunt in open air, the group found flying at turbine height in Southeast Asia: {0} passes ({1} labelled, {2} by call shape only). Ground-level detectors under-sample bats at rotor height, so treat this as a lower bound.", n, w.labelled || 0, w.by_sound || 0)}${top ? " " + t("Busiest nights: {0}.", top) : ""}</p>
-    <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Open-air forager passes per hour">${bars}</svg></section>`;
+    <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="${t("Open-air forager passes per hour")}">${bars}</svg></section>`;
 }
 
 // Recording conditions: one row for the whole survey, one per detector that overrides it. Saved on every change.
@@ -687,18 +688,18 @@ function seasonHtml() {
     const sx = lo => pad + (W - 2 * pad) * ((lo - lo0) * Math.cos(la0 * Math.PI / 180)) / span;
     const sy = la => H - pad - (H - 2 * pad) * (la - la0) / span;
     const maxP = Math.max(1, ...located.map(s => s.passes));
-    const dots = located.map(s => `<g><circle cx="${sx(s.lon).toFixed(1)}" cy="${sy(s.lat).toFixed(1)}" r="${(6 + 14 * Math.sqrt(s.passes / maxP)).toFixed(1)}" style="fill:var(--amber);fill-opacity:.75"><title>${esc(s.id)}: ${s.passes} passes</title></circle>
+    const dots = located.map(s => `<g><circle cx="${sx(s.lon).toFixed(1)}" cy="${sy(s.lat).toFixed(1)}" r="${(6 + 14 * Math.sqrt(s.passes / maxP)).toFixed(1)}" style="fill:var(--amber);fill-opacity:.75"><title>${esc(s.id)}: ${t("{0} passes", s.passes)}</title></circle>
       <text x="${(sx(s.lon) + 12).toFixed(1)}" y="${(sy(s.lat) - 12).toFixed(1)}" style="fill:var(--moon)" font-size="22">${esc(String(s.id).slice(-6))}</text></g>`).join("");
     const km = (span * 111).toFixed(span * 111 < 10 ? 1 : 0);
     out += `<section class="panel"><h2>${t("Detector sites")}</h2>
-      <p class="hint">From GPS positions stored in the recordings (GUANO metadata). Dot size = bat passes. The area shown is about ${km} km across. Works offline, no map tiles.</p>
-      <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Detector positions">${dots}</svg></section>`;
+      <p class="hint">${t("From GPS positions stored in the recordings (GUANO metadata). Dot size = bat passes. The area shown is about {0} km across. Works offline, no map tiles.", km)}</p>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("Detector positions")}">${dots}</svg></section>`;
   }
   if (sites.length) {
     out += `<section class="panel"><h2>${t("Sites")}</h2><div style="overflow-x:auto"><table class="sum"><tr><th>${t("Detector")}</th><th>${t("Position")}</th><th>${t("Device")}</th><th>${t("Files")}</th><th>${t("Passes")}</th><th>${t("Most common")}</th></tr>
-      ${sites.map(s => `<tr><td>${esc(s.id)}</td><td>${s.lat != null ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : "-"}</td><td>${esc(s.device || "")}</td><td>${s.files}</td><td>${s.passes}</td><td>${esc(topKey(s.groups) || "")}</td></tr>`).join("")}</table></div></section>`;
+      ${sites.map(s => `<tr><td>${esc(s.id)}</td><td>${s.lat != null ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : "-"}</td><td>${esc(s.device || "")}</td><td>${s.files}</td><td>${s.passes}</td><td>${esc(tr(topKey(s.groups) || ""))}</td></tr>`).join("")}</table></div></section>`;
   } else {
-    out += `<p class="empty">No detector positions found in these recordings. Song Meter, Pettersson and other detectors that write GUANO metadata with GPS show up here automatically.</p>`;
+    out += `<p class="empty">${t("No detector positions found in these recordings. Song Meter, Pettersson and other detectors that write GUANO metadata with GPS show up here automatically.")}</p>`;
   }
   if (nights.length) {
     const groups = [...new Set(nights.flatMap(n => Object.keys(n.groups)))];
@@ -711,15 +712,15 @@ function seasonHtml() {
       for (const g of groups) {
         const v = n.groups[g] || 0; if (!v) continue;
         const hh = (H - 40) * v / max; y -= hh;
-        bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>night of ${n.night} · ${esc(g)}: ${v}</title></rect>`;
+        bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw}" height="${hh.toFixed(1)}" fill="${col(g)}" rx="2"><title>${t("night of {0}", n.night)} · ${esc(tr(g))}: ${v}</title></rect>`;
       }
       if (nights.length <= 31) bars += axisText(x + bw / 2, H - 8, n.night.slice(5), 10);
       x += bw + 4;
     }
     out += `<section class="panel"><h2>${t("Activity night by night")}</h2>
-      <p class="hint">Passes per night (noon to noon), coloured by your labels, or by sound type where nothing is labelled yet. ${nights.length} night${nights.length > 1 ? "s" : ""}: ${nights[0].night} to ${nights[nights.length - 1].night}.</p>
-      <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="Bat passes per night">${bars}</svg>
-      <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(g)}</span>`).join("")}</div></section>`;
+      <p class="hint">${t("Passes per night (noon to noon), coloured by your labels, or by sound type where nothing is labelled yet.")} ${t("Nights: {0}, from {1} to {2}.", nights.length, nights[0].night, nights[nights.length - 1].night)}</p>
+      <svg viewBox="0 0 ${Math.max(W, x + 20)} ${H}" width="100%" role="img" aria-label="${t("Bat passes per night")}">${bars}</svg>
+      <div class="legend">${groups.map(g => `<span><i style="background:${col(g)}"></i>${esc(tr(g))}</span>`).join("")}</div></section>`;
   }
   return out;
 }
