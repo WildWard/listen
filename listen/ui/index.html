@@ -407,6 +407,8 @@ function renderQuick() {
         <span>${t("Slowed down 10x")} · <kbd>Space</kbd></span>
         <label><input type="checkbox" id="autoplay" ${Q.autoplay ? "checked" : ""}> ${t("Play each pass automatically")}</label></div>
       ${p.unusual ? `<p class="unusual" role="note"><b>${t("Unusual frequency")}</b> · ${t("Calls around {0} kHz, {1}% from the closest species you know ({2}, {3} kHz). Could be a species missing from your library.", p.unusual.f_khz, Math.round(p.unusual.gap * 100), `<i class="tx">${esc(p.unusual.nearest)}</i>`, p.unusual.nearest_khz)}</p>` : ""}
+      ${p.misfit && !p.label && p.suggestion ? `<p class="unusual" role="note"><b>${t("Frequency check")}</b> · ${t("Listen suggests {0}, but the {0} recordings it knows call at {1} to {2} kHz and this pass measures {3} kHz. That can be a harmonic, a second bat in the recording, or a wrong suggestion. Look twice before confirming.", `<i class="tx">${esc(p.suggestion)}</i>`, p.misfit.low, p.misfit.high, p.misfit.f_khz)}</p>` : ""}
+      ${p.unexpected && !p.label && pr && !pr.genus ? `<p class="unusual" role="note"><b>${t("Not expected here")}</b> · ${t("{0} is not on the species list for {1}. Check carefully before confirming.", `<i class="tx">${esc(p.suggestion)}</i>`, t(p.unexpected))}</p>` : ""}
       <div class="decide">
         ${p.label ? `<div class="done-tag">✓ ${t("Labelled as")} <i class="tx">${esc(p.label)}</i></div>` : ""}
         <div class="verdict">
@@ -597,7 +599,7 @@ function passHtml(p) {
   return `<div class="pass ${off ? "off" : ""}">
     <input class="pick" type="checkbox" ${off ? "" : "checked"} data-pick="${p.id}" aria-label="${t("Include pass {0}", p.id)}">
     <img src="/media/${p.id}.png" alt="${t("Spectrogram of pass {0}", p.id)}" data-play="${p.id}" loading="lazy">
-    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${t("{0} kHz, {1}% from the closest known species", p.unusual.f_khz, Math.round(p.unusual.gap * 100))}">${t("unusual")}</b>` : ""} ${who}</span>
+    <div class="pinfo"><span>${esc(shortName(p.file))} · ${p.start.toFixed(1)}s<br>${m.f_char_khz ?? p.peak_khz} kHz${m.shape ? " " + m.shape : ""}${p.unusual ? ` <b class="odd" title="${t("{0} kHz, {1}% from the closest known species", p.unusual.f_khz, Math.round(p.unusual.gap * 100))}">${t("unusual")}</b>` : ""}${p.unexpected && !p.label && !p.genus ? ` <b class="odd" title="${t("{0} is not on the species list for {1}. Check carefully before confirming.", esc(p.suggestion), t(p.unexpected))}">${t("not expected here")}</b>` : ""} ${who}</span>
       <button class="play" data-play="${p.id}" aria-label="${t("Play pass {0}, slowed down 10x", p.id)}">▶</button></div></div>`;
 }
 
@@ -664,6 +666,9 @@ function conditionsHtml(sites) {
     <td><input class="field" type="text" maxlength="200" data-ctx="${esc(site)}" data-field="note" value="${esc(c.note || "")}" placeholder="${t("e.g. forest trail, river bank")}" aria-label="${t("Note")}"></td></tr>`;
   return `<section class="panel"><h2>${t("Recording conditions")}</h2>
     <p class="hint">${t("The same bat calls differently in open space, along an edge or in clutter, and differently again after a hand release. Note how this survey was recorded: it goes into passes.csv, calls.csv and the Darwin Core export, so your labelled passes become documented reference calls. Listen does not use it for identification yet.")}</p>
+    ${(survey.regions || []).length ? `<p style="margin:0 0 14px"><label>${t("Species list for this region")}
+      <select data-ctx="" data-field="region" aria-label="${t("Species list for this region")}"><option value="">${t("none")}</option>${survey.regions.map(r => `<option value="${esc(r)}" ${(survey.context || {}).region === r ? "selected" : ""}>${t(r)}</option>`).join("")}</select></label>
+      <span class="hint">${t("A suggestion outside the list gets a \"not expected here\" note. Nothing is blocked.")}</span></p>` : ""}
     <div style="overflow-x:auto"><table class="sum"><tr><th>${t("Detector")}</th><th>${t("Habitat")}</th><th>${t("Recording method")}</th><th>${t("Microphone height (m)")}</th><th>${t("Note")}</th></tr>
     ${row("", t("Whole survey"), survey.context || {}, t("not set"))}
     ${sites.map(s => row(s.id, s.id, s.context || {}, t("same as survey"))).join("")}</table></div></section>`;

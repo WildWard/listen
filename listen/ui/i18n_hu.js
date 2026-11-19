@@ -143,6 +143,17 @@ EXTRA.hu = {
   "Back to the previous pass": "Vissza az előző áthaladáshoz",
   "Play again": "Lejátszás újra",
 
+  // ---- frekvencia-ellenőrzés és fajlista ----
+  "Frequency check": "Frekvencia-ellenőrzés",
+  "Listen suggests {0}, but the {0} recordings it knows call at {1} to {2} kHz and this pass measures {3} kHz. That can be a harmonic, a second bat in the recording, or a wrong suggestion. Look twice before confirming.": "A Listen javaslata {0}, de az általa ismert {0} felvételek hangja {1} és {2} kHz közötti, ennél az áthaladásnál pedig {3} kHz-et mért. Ez lehet felharmonikus, egy második denevér a felvételen, vagy téves javaslat. Megerősítés előtt nézd meg alaposan.",
+  "Not expected here": "Itt nem várható",
+  "not expected here": "itt nem várható",
+  "{0} is not on the species list for {1}. Check carefully before confirming.": "{0} nem szerepel a(z) {1} fajlistáján. Megerősítés előtt ellenőrizd alaposan.",
+  "Species list for this region": "A terület fajlistája",
+  "none": "nincs",
+  "A suggestion outside the list gets a \"not expected here\" note. Nothing is blocked.": "A listán kívüli javaslat „itt nem várható” megjegyzést kap. A program semmit sem tilt le.",
+  "Hungary": "Magyarország",
+
   // ---- éjszakai aktivitás ----
   "Bat activity through the night": "Denevéraktivitás az éjszaka folyamán",
   "Passes per hour, coloured by your labels, or by sound type where nothing is labelled yet. Times from: {0}.": "Áthaladások óránként, a címkéid szerint színezve, vagy ahol még nincs címke, a hangtípus szerint. Az időpontok forrása: {0}.",

@@ -22,7 +22,9 @@ def export(survey: Survey) -> dict:
                   "f_char_khz": m.get("f_char_khz", ""), "duration_ms": m.get("duration_ms", ""),
                   "sound_type": (p.get("sound") or {}).get("type", ""),
                   "unusual_frequency": "yes" if p.get("unusual") else "",
-                  "nearest_known_species": (p.get("unusual") or {}).get("nearest", "")})
+                  "nearest_known_species": (p.get("unusual") or {}).get("nearest", ""),
+                  "frequency_mismatch": "yes" if p.get("misfit") and not p["label"] else "",
+                  "outside_species_list": (p.get("unexpected") or "") if not p["label"] else ""})
         ctx = survey.context_for(p["file"])
         r.update({"habitat": ctx.get("habitat", ""), "recording_method": ctx.get("method", ""),
                   "height_m": ctx.get("height_m", ""), "conditions_note": ctx.get("note", "")})
