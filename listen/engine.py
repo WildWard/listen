@@ -49,6 +49,20 @@ def calibrated(raw: float, kind: str) -> float:
 
 SURE = 0.7           # name a species at 70%+ confidence; below that, fall back to a confident genus
 
+# Frequency check. A suggestion gets a "look twice" note when the pass's measured call frequency lies far
+# outside every frequency that species has shown in the reference library and this survey's labels.
+# It is only a note, the suggestion stays as it is. A first version dropped such suggestions, and on real
+# recordings that made things slightly worse: the measured frequency is itself wrong often enough (a
+# harmonic, a second bat in the same file). As a note it earns its place: on the Hungarian test survey
+# 82% of the suggestions it marked were wrong (27 of 33), against 54% of the rest (132 of 244).
+# The margin is wide on purpose: bats shift their calls with clutter.
+FIT_MARGIN = 0.25    # a species' known range, widened by a quarter each side
+FIT_MIN_CALLS = 3    # only passes with a few clean measured calls get the note
+
+# Species lists per region: a suggestion outside the list is flagged, never blocked.
+_REGIONS_FILE = Path(__file__).parent / "regions.json"
+REGIONS = json.loads(_REGIONS_FILE.read_text(encoding="utf8")) if _REGIONS_FILE.exists() else {}
+
 # Recording conditions. The same bat calls differently in open air, along an edge or in clutter, and differently
 # again when released from the hand or flying in a tent (ChiroVox team, 2026-11). Recorded with the survey and
 # exported with every pass, so labelled passes become documented reference calls. Not used by the classifier yet:
@@ -73,6 +87,8 @@ def clean_context(ctx: dict) -> dict:
     note = str(ctx.get("note") or "").strip()[:200]
     if note:
         out["note"] = note
+    if ctx.get("region") in REGIONS:
+        out["region"] = ctx["region"]
     return out
 
 
@@ -246,6 +262,7 @@ class Survey:
             w_parts.append(np.full(len(idx), 3.0))
         for p in self.passes:
             p["suggestion"], p["confidence"], p["genus"], p["genus_confidence"], p["top"] = None, None, None, None, []
+            p["misfit"], p["unexpected"] = None, None
         self.flag_unusual()
         if not X_parts:
             return
@@ -262,8 +279,12 @@ class Survey:
         # genus of each class: the first word of a binomial; one-word labels (genus or "Unknown") stand alone
         genus_of = np.array([c.split()[0] for c in clf.classes_])
         genera = np.unique(genus_of)
+        bands = self.species_bands()
+        region = self.context.get("survey", {}).get("region")
+        expected = set(REGIONS[region]["species"]) if region in REGIONS else None
         for p, pr in zip(todo, proba):
             k = int(pr.argmax())
+            p["misfit"] = self.frequency_mismatch(p, str(clf.classes_[k]), bands)
             p["suggestion"], p["confidence"] = str(clf.classes_[k]), round(calibrated(float(pr[k]), "species"), 3)
             # runners-up for one-key review: the right answer is often second when the top guess is wrong
             p["top"] = [[str(clf.classes_[j]), round(calibrated(float(pr[j]), "species"), 3)] for j in pr.argsort()[::-1][:3]]
@@ -274,6 +295,43 @@ class Survey:
             g_conf = calibrated(float(gp[g]), "genus")
             p["genus"], p["genus_confidence"] = ((str(genera[g]), round(g_conf, 3))
                                                  if p["confidence"] < SURE and g_conf >= SURE else (None, None))
+            sp = p["suggestion"]
+            if expected is not None and len(sp.split()) == 2 and not sp.startswith("Unknown") and sp not in expected:
+                p["unexpected"] = region
+
+    def species_bands(self) -> dict[str, tuple[float, float, int]]:
+        """The characteristic call frequencies each known species has shown, from the reference library and
+        this survey's labels: (lowest, highest, number of passes). With five or more passes the outer tenth
+        on each side is dropped, so one stray call in a reference file doesn't stretch the range."""
+        f_by = {}
+        if self.reference is not None and "F" in self.reference:
+            for sp, fc in zip(self.reference["y"], self.reference["F"][:, 0]):
+                if np.isfinite(fc):
+                    f_by.setdefault(str(sp), []).append(float(fc))
+        for p in self.passes:
+            fc = (p.get("measures") or {}).get("f_char_khz")
+            if p["label"] and fc is not None:
+                f_by.setdefault(p["label"], []).append(float(fc))
+        out = {}
+        for sp, v in f_by.items():
+            lo, hi = (np.percentile(v, [10, 90]) if len(v) >= 5 else (min(v), max(v)))
+            out[sp] = (float(lo), float(hi), len(v))
+        return out
+
+    def frequency_mismatch(self, p: dict, species: str, bands: dict) -> dict | None:
+        """A note when this pass's measured frequency is far from everything the suggested species has shown.
+        Never changes the suggestion: the measurement can be the thing that is wrong."""
+        m = p.get("measures") or {}
+        fc = m.get("f_char_khz")
+        if fc is None or m.get("n_calls", 0) < FIT_MIN_CALLS or (p.get("sound") or {}).get("type") == "unclear":
+            return None
+        if species not in bands or species.startswith("Unknown"):
+            return None   # nothing known about where it calls
+        lo, hi, n = bands[species]
+        fc = float(fc)
+        if lo / (1 + FIT_MARGIN) <= fc <= hi * (1 + FIT_MARGIN):
+            return None
+        return {"f_khz": round(fc, 1), "low": round(lo, 1), "high": round(hi, 1), "n": n}
 
     def known_frequencies(self) -> list[tuple[str, float]]:
         """Frequency bands that known constant-frequency species (horseshoe and leaf-nosed bats) call in,
@@ -364,6 +422,8 @@ class Survey:
             self.context["sites"][site] = ctx
         else:
             self.context["sites"].pop(site, None)
+        if site is None:
+            self.suggest()   # the region's species list changes which suggestions get flagged
         self.save()
 
     def context_for(self, rel: str) -> dict:
@@ -448,6 +508,6 @@ class Survey:
                 "activity": activity, "time_source": sorted(s for s in sources if s),
                 "known_species": self.known_species(), "bands": self.known_frequencies(), "sites": sites, "nights": nights, "wind": self.wind_risk(),
                 "self_check": self.self_check(),
-                "context": self.context.get("survey", {}), "context_options": CONTEXT_OPTIONS,
+                "context": self.context.get("survey", {}), "context_options": CONTEXT_OPTIONS, "regions": sorted(REGIONS),
                 "reference": {"path": self.reference_path, "species": len(self.reference["species"]),
                               "passes": int(len(self.reference["y"]))} if self.reference else None}

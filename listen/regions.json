@@ -1,0 +1,14 @@
+{
+  "Hungary": {
+    "note": "28 bat species recorded in Hungary. First draft of the list: to be confirmed by Hungarian bat researchers.",
+    "species": [
+      "Rhinolophus ferrumequinum", "Rhinolophus hipposideros", "Rhinolophus euryale",
+      "Myotis myotis", "Myotis blythii", "Myotis bechsteinii", "Myotis nattereri", "Myotis emarginatus",
+      "Myotis mystacinus", "Myotis brandtii", "Myotis alcathoe", "Myotis daubentonii", "Myotis dasycneme",
+      "Nyctalus noctula", "Nyctalus leisleri", "Nyctalus lasiopterus",
+      "Eptesicus serotinus", "Eptesicus nilssonii", "Vespertilio murinus",
+      "Pipistrellus pipistrellus", "Pipistrellus pygmaeus", "Pipistrellus nathusii", "Pipistrellus kuhlii", "Hypsugo savii",
+      "Plecotus auritus", "Plecotus austriacus", "Barbastella barbastellus", "Miniopterus schreibersii"
+    ]
+  }
+}
