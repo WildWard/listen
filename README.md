@@ -1,6 +1,10 @@
 # WildWard Listen
 
-**Offline bat-call review for Southeast Asian surveys**, by [WildWard](https://wildward.github.io).
+**Offline bat-call review that learns from your own reference calls**, by [WildWard](https://wildward.github.io). Free, open source, in English and Hungarian (plus five Southeast Asian languages). Built and tested on Southeast Asian bats first; a first test on Hungarian and Bulgarian recordings is in the table below.
+
+![WildWard Listen's Quick review screen](https://wildward.github.io/img/listen-quick-review.jpg)
+
+*Quick review. Demo survey of CC BY 4.0 recordings by Neil M. Furey on ChiroVox; spectrogram drawn by Listen from recording A005306.*
 
 Point it at a folder of bat-detector recordings. It finds every bat pass, measures every call, groups calls that sound alike, and lets an expert label whole groups at once. It learns from each label and exports spreadsheets plus a survey report. Everything runs on your own computer. Nothing is uploaded.
 
@@ -35,6 +39,7 @@ Tested on 237 identified recordings of 21 Malaysian bat species from the [ChiroV
 | Sound type points to the right bat family, no labels at all | **78%** overall (184 of 237): leaf-nosed 85%, woolly 83%, horseshoe 73%, vesper 92%, free-tailed 75% |
 | Slit-faced bats (*Nycteris*) | 0 of 12, there is no rule for their faint calls yet |
 | Species, with labels (see [batlab](https://github.com/WildWard/batlab), 91 species from Vietnam, Malaysia and Indonesia) | 78% species / 90% genus; 63% / 82% on recording sites never seen in training (49 species) |
+| Europe, first test ([batlab Test 14](https://github.com/WildWard/batlab/blob/main/FINDINGS.md): 374 ChiroVox recordings from Hungary and Bulgaria, 28 species, about 8 recordings per species and country) | 49% species at Hungarian sites never seen in training, with Hungarian plus Bulgarian calls (43% with Hungarian calls alone). Horseshoe bats carry over between countries (70%), FM and QCF bats do not (33%). Far too little data for a real tool |
 | Species from a reference library only, zero labels, on a 48-recording test night (125 passes, no overlap with the library) | 53% species / 71% genus; when it says 80% or more, it is right 82% of the time |
 
 Measured call frequencies match published values, for example *Hipposideros cervinus* about 118 kHz, *Rhinolophus affinis* 73.5 kHz with 36 ms calls, *R. borneensis* 82.5 kHz, *Kerivoula* 2 ms steep sweeps.
@@ -80,6 +85,10 @@ The app only listens on your own computer (127.0.0.1). Recordings, labels and re
 Use your own reference library: a folder with one sub-folder per species, named the way the species should appear (for example `My calls\Hipposideros larvatus\*.wav`). Set the time-expansion factor for the library, or put a `te.txt` containing `10` or `16` in any species folder that is time-expanded. Listen only ever learns from data on your own computer.
 
 A ready-made regional model trained on ChiroVox recordings would help everyone start faster. ChiroVox recordings are mostly CC BY-NC-ND, so we won't distribute such a model until the recordings' rights holders agree.
+
+## Who makes this
+
+WildWard Listen is written and tested by one developer, Antal Kiss, with AI coding assistants. It is a few weeks old and has so far been used by one person on Windows. Every number on this page comes from a test whose code is public in [batlab](https://github.com/WildWard/batlab), including the tests that failed. If it names a bat wrongly on your recordings, or something is hard to use, please open an issue or write to the address below: that is the most useful thing you can send.
 
 ## Licence and credits
 
