@@ -138,7 +138,7 @@ def summarise(calls: list[Call]) -> dict:
 
 def sound_type(s: dict) -> dict:
     """Plain-language call type and the bat group it is typical of, from measured parameters.
-    These are broad textbook patterns for South-East Asia, meant as a starting point for review,
+    These are broad textbook patterns (South-East Asia first, Europe added for the low open-air calls), meant as a starting point for review,
     never as an identification."""
     if not s:
         return {"type": "unclear", "hint": "unclear calls (too faint to measure)"}
@@ -153,7 +153,8 @@ def sound_type(s: dict) -> dict:
     if sh == "FM" and dur <= 3.5 and bw >= 25 and fs >= 110:
         return {"type": f"very short, steep sweep from about {fs:.0f} kHz", "hint": "typical of woolly bats (Kerivoula) or tube-nosed bats (Murina)"}
     if fc < 32:
-        return {"type": f"low, flat-ending call, about {fc:.0f} kHz", "hint": "typical of free-tailed or sheath-tailed bats (Molossidae, Emballonuridae)"}
+        return {"type": f"low, flat-ending call, about {fc:.0f} kHz", "hint": "typical of open-air hunters (noctules, serotines and parti-coloured bats in Europe; "
+                        "free-tailed and sheath-tailed bats in the tropics)"}
     if sh in ("QCF", "FM-QCF"):
         return {"type": f"sweep ending in a flat tail, about {fc:.0f} kHz", "hint": "typical of vesper bats such as pipistrelles, or bent-winged bats (Miniopterus)"}
     return {"type": f"downward sweep ending near {fc:.0f} kHz", "hint": "typical of vesper bats such as Myotis"}

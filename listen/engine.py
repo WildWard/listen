@@ -27,9 +27,10 @@ MIN_CF_KHZ = 25.0
 # rotor zone in central Thailand (Srilopan et al. 2026, Biodiversity and Conservation 35:109: Mops,
 # Taphozous, Scotophilus, Myotis siligorensis) plus close relatives with the same flight style.
 OPEN_AIR_GENERA = {"Mops", "Chaerephon", "Tadarida", "Cheiromeles", "Taphozous", "Saccolaimus", "Scotophilus",
-                   "Miniopterus", "Pipistrellus", "Hypsugo", "Scotozous", "Ia"}
+                   "Miniopterus", "Pipistrellus", "Hypsugo", "Scotozous", "Ia",
+                   "Nyctalus", "Vespertilio"}   # Europe: noctules and the parti-coloured bat, the classic high fliers
 OPEN_AIR_SPECIES = {"Myotis siligorensis"}
-OPEN_AIR_SOUNDS = ("free-tailed or sheath-tailed",)   # unlabelled passes whose call shape points to this group
+OPEN_AIR_SOUNDS = ("open-air hunters", "free-tailed or sheath-tailed")   # second one: surveys scanned before this wording   # unlabelled passes whose call shape points to this group
 # Confidence calibration (batlab tools/calibrate_listen.py): maps the classifier's raw top probability to how
 # often such an answer was right at recording sites the model had never heard, so "80%" means right ~80% of the time.
 _CAL = json.loads((Path(__file__).parent / "calibration.json").read_text(encoding="utf8")) \
