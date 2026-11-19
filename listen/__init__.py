@@ -1,1 +1,2 @@
-"""WildWard Listen: offline bat call review for Southeast Asian surveys."""
+"""WildWard Listen: offline bat call review that learns from your own reference calls."""
+__version__ = "0.4.0"
