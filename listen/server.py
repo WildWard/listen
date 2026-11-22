@@ -7,7 +7,7 @@ import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import report
+from . import guano, report
 from .engine import Survey
 
 UI = Path(__file__).parent / "ui" / "index.html"
@@ -150,6 +150,11 @@ def make_handler(app: App):
                     return self._json(app.survey.summary())
             if self.path == "/api/export":
                 return self._ready() and self._json(report.export(app.survey))
+            if self.path == "/api/export_guano":   # separate from Export: this one copies recordings
+                if not self._ready():
+                    return
+                with app.lock:
+                    return self._json(guano.export_labelled(app.survey))
             return self._json({"error": "not found"}, 404)
 
     return Handler

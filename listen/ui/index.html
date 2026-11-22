@@ -182,6 +182,7 @@ table.sum th { font: 600 11px var(--display); letter-spacing: .12em; text-transf
         <span class="bar" data-t-title="Share of passes reviewed" title="Share of passes reviewed"><i id="progress" style="width:0"></i></span></div>
       <button class="btn ghost" id="refBtn" data-t="Reference library">Reference library</button>
       <button class="btn ghost" id="openOther" data-t="Open another survey">Open another survey</button>
+      <button class="btn ghost" id="exportGuano" data-t="GUANO copies" data-t-title="Copies of the recordings you identified, with the species written inside the file as GUANO metadata. Your original recordings are not changed." title="Copies of the recordings you identified, with the species written inside the file as GUANO metadata. Your original recordings are not changed.">GUANO copies</button>
       <button class="btn" id="export" data-t="Export">Export</button>
     </div>
     <select id="lang" aria-label="Language / Nyelv" class="lang"></select>
@@ -759,7 +760,13 @@ document.addEventListener("click", async e => {
 });
 $("#export").onclick = async () => {
   const r = await (await fetch("/api/export", { method: "POST" })).json();
-  toast(t("Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html and occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF)", r.n_occurrences ?? 0));
+  toast(t("Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF) and two files for Whombat", r.n_occurrences ?? 0));
+};
+$("#exportGuano").onclick = async () => {
+  const r = await (await fetch("/api/export_guano", { method: "POST" })).json();
+  if (r.error) return toast(r.error);
+  const skipped = (r.skipped || []).length;
+  toast((r.files ? t("Wrote {0} identified recordings with GUANO metadata to .wildward/guano. Your original recordings were not changed.", r.files) : t("No pass has been identified yet, so there is nothing to write.")) + (skipped ? " " + t("{0} files could not be written.", skipped) : ""));
 };
 document.addEventListener("change", e => { if (e.target.dataset && "ctx" in e.target.dataset) saveContext(e.target.dataset.ctx); });
 $("#openOther").onclick =() => showStart({ folder: survey && survey.folder });

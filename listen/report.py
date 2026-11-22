@@ -1,10 +1,11 @@
-"""CSV of every pass and a one-page HTML survey report."""
+"""CSV of every pass, a one-page HTML survey report, Darwin Core occurrences and the Whombat files."""
 import csv
 import html
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+from . import whombat
 from .engine import Survey
 
 
@@ -48,6 +49,7 @@ def export(survey: Survey) -> dict:
         w.writerows(call_rows)
 
     occ_path, n_occ = darwin_core(survey)
+    wb = whombat.export(survey)
 
     reviewed = Counter(p["label"] for p in survey.passes if p["label"])
     suggested = Counter(p["suggestion"] for p in survey.passes if not p["label"] and p["suggestion"])
@@ -98,7 +100,7 @@ suggestions as leads, not identifications. Skipped files: {len(survey.skipped)}.
     report_path = out / "report.html"
     report_path.write_text(page, encoding="utf8")
     return {"csv": str(csv_path), "calls": str(calls_path), "report": str(report_path), "occurrences": str(occ_path),
-            "n_occurrences": n_occ}
+            "n_occurrences": n_occ, "whombat": wb}
 
 
 DWC_FIELDS = ["occurrenceID", "basisOfRecord", "eventDate", "scientificName", "taxonRank", "kingdom", "phylum", "class",

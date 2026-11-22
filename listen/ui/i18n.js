@@ -148,12 +148,32 @@ const I18N = {
   "Tick at least one pass.": { id: "Centang setidaknya satu lintasan.", ms: "Tanda sekurang-kurangnya satu laluan.", vi: "Hãy chọn ít nhất một lượt.", th: "เลือกอย่างน้อยหนึ่งครั้ง", fil: "Lagyan ng tsek ang kahit isang pagdaan." },
   "Labelled {0} passes as {1}.": { id: "{0} lintasan diberi label {1}.", ms: "{0} laluan dilabel sebagai {1}.", vi: "Đã gán nhãn {0} lượt là {1}.", th: "ติดป้าย {0} ครั้ง เป็น {1}", fil: "Nilagyan ng label na {1} ang {0} pagdaan." },
   "Cleared {0} labels.": { id: "{0} label dihapus.", ms: "{0} label dikosongkan.", vi: "Đã xóa {0} nhãn.", th: "ล้างป้าย {0} รายการ", fil: "Nabura ang {0} label." },
-  "Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html and occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF)": {
-    id: "Disimpan di folder survei (.wildward): passes.csv, calls.csv, report.html dan occurrences.csv ({0} catatan terperiksa dalam format Darwin Core, siap untuk GBIF)",
-    ms: "Disimpan dalam folder tinjauan (.wildward): passes.csv, calls.csv, report.html dan occurrences.csv ({0} rekod disemak dalam format Darwin Core, sedia untuk GBIF)",
-    vi: "Đã lưu trong thư mục khảo sát (.wildward): passes.csv, calls.csv, report.html và occurrences.csv ({0} bản ghi đã xem xét theo chuẩn Darwin Core, sẵn sàng cho GBIF)",
-    th: "บันทึกในโฟลเดอร์การสำรวจ (.wildward): passes.csv, calls.csv, report.html และ occurrences.csv ({0} บันทึกที่ตรวจแล้วในรูปแบบ Darwin Core พร้อมส่ง GBIF)",
-    fil: "Naka-save sa folder ng survey (.wildward): passes.csv, calls.csv, report.html at occurrences.csv ({0} nasuring tala sa Darwin Core, handa para sa GBIF)" },
+  "Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF) and two files for Whombat": {
+    id: "Disimpan di folder survei (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} catatan terperiksa dalam format Darwin Core, siap untuk GBIF) dan dua berkas untuk Whombat",
+    ms: "Disimpan dalam folder tinjauan (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} rekod disemak dalam format Darwin Core, sedia untuk GBIF) dan dua fail untuk Whombat",
+    vi: "Đã lưu trong thư mục khảo sát (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} bản ghi đã xem xét theo chuẩn Darwin Core, sẵn sàng cho GBIF) và hai tệp cho Whombat",
+    th: "บันทึกในโฟลเดอร์การสำรวจ (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} บันทึกที่ตรวจแล้วในรูปแบบ Darwin Core พร้อมส่ง GBIF) และไฟล์สำหรับ Whombat สองไฟล์",
+    fil: "Naka-save sa folder ng survey (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} nasuring tala sa Darwin Core, handa para sa GBIF) at dalawang file para sa Whombat" },
+  "GUANO copies": { id: "Salinan GUANO", ms: "Salinan GUANO", vi: "Bản sao GUANO", th: "สำเนา GUANO", fil: "Mga kopyang GUANO" },
+  "Copies of the recordings you identified, with the species written inside the file as GUANO metadata. Your original recordings are not changed.": {
+    id: "Salinan rekaman yang sudah Anda identifikasi, dengan nama spesies ditulis di dalam berkas sebagai metadata GUANO. Rekaman asli Anda tidak diubah.",
+    ms: "Salinan rakaman yang telah anda kenal pasti, dengan nama spesies ditulis di dalam fail sebagai metadata GUANO. Rakaman asal anda tidak diubah.",
+    vi: "Bản sao các bản ghi bạn đã định danh, với tên loài được ghi vào trong tệp dưới dạng siêu dữ liệu GUANO. Bản ghi gốc của bạn không bị thay đổi.",
+    th: "สำเนาของไฟล์เสียงที่คุณระบุชนิดแล้ว โดยเขียนชื่อชนิดไว้ในไฟล์เป็นเมทาดาทา GUANO ไฟล์ต้นฉบับของคุณไม่ถูกแก้ไข",
+    fil: "Mga kopya ng mga recording na natukoy mo na, na nakasulat ang species sa loob ng file bilang GUANO metadata. Hindi binabago ang orihinal mong mga recording." },
+  "Wrote {0} identified recordings with GUANO metadata to .wildward/guano. Your original recordings were not changed.": {
+    id: "{0} rekaman teridentifikasi ditulis dengan metadata GUANO ke .wildward/guano. Rekaman asli Anda tidak diubah.",
+    ms: "{0} rakaman yang dikenal pasti ditulis dengan metadata GUANO ke .wildward/guano. Rakaman asal anda tidak diubah.",
+    vi: "Đã ghi {0} bản ghi đã định danh kèm siêu dữ liệu GUANO vào .wildward/guano. Bản ghi gốc của bạn không bị thay đổi.",
+    th: "เขียนไฟล์เสียงที่ระบุชนิดแล้ว {0} ไฟล์ พร้อมเมทาดาทา GUANO ไปที่ .wildward/guano ไฟล์ต้นฉบับของคุณไม่ถูกแก้ไข",
+    fil: "Naisulat ang {0} natukoy na recording na may GUANO metadata sa .wildward/guano. Hindi binago ang orihinal mong mga recording." },
+  "No pass has been identified yet, so there is nothing to write.": {
+    id: "Belum ada lintasan yang diidentifikasi, jadi belum ada yang bisa ditulis.",
+    ms: "Belum ada laluan yang dikenal pasti, jadi tiada apa-apa untuk ditulis.",
+    vi: "Chưa có lượt bay nào được định danh, nên chưa có gì để ghi.",
+    th: "ยังไม่มีครั้งที่บินผ่านใดถูกระบุชนิด จึงยังไม่มีอะไรให้เขียน",
+    fil: "Wala pang pagdaan na natukoy, kaya wala pang maisusulat." },
+  "{0} files could not be written.": { id: "{0} berkas tidak dapat ditulis.", ms: "{0} fail tidak dapat ditulis.", vi: "Không ghi được {0} tệp.", th: "เขียนไม่ได้ {0} ไฟล์", fil: "Hindi naisulat ang {0} file." },
 };
 
 let LANG = "en";

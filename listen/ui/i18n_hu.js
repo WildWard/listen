@@ -210,7 +210,12 @@ EXTRA.hu = {
   "Tick at least one pass.": "Jelölj ki legalább egy áthaladást.",
   "Labelled {0} passes as {1}.": "{0} áthaladás címkéje: {1}.",
   "Cleared {0} labels.": "{0} címke törölve.",
-  "Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html and occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF)": "Elmentve a felmérés mappájába (.wildward): passes.csv, calls.csv, report.html és occurrences.csv ({0} ellenőrzött rekord Darwin Core formátumban, GBIF-re kész)",
+  "Saved in the survey folder (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} reviewed records in Darwin Core, ready for GBIF) and two files for Whombat": "Elmentve a felmérés mappájába (.wildward): passes.csv, calls.csv, report.html, occurrences.csv ({0} ellenőrzött rekord Darwin Core formátumban, GBIF-re kész) és két fájl a Whombathoz",
+  "GUANO copies": "GUANO-másolatok",
+  "Copies of the recordings you identified, with the species written inside the file as GUANO metadata. Your original recordings are not changed.": "Másolat azokról a felvételekről, amelyeket meghatároztál: a faj neve GUANO metaadatként bekerül a fájlba. Az eredeti felvételeid nem változnak.",
+  "Wrote {0} identified recordings with GUANO metadata to .wildward/guano. Your original recordings were not changed.": "{0} meghatározott felvétel GUANO metaadattal a .wildward/guano mappába került. Az eredeti felvételeid nem változtak.",
+  "No pass has been identified yet, so there is nothing to write.": "Még egy áthaladás sincs meghatározva, így nincs mit kiírni.",
+  "{0} files could not be written.": "{0} fájlt nem sikerült kiírni.",
 
   // ---- a motor szövegei (pontos egyezés) ----
   "GUANO metadata": "GUANO metaadatok",
