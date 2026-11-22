@@ -169,8 +169,8 @@ def test_only_identified_recordings_are_exported():
 
 def project_for(te: int = 1):
     d = Path(tempfile.mkdtemp())
-    make_wav(d / "night1" / "a.wav", guano_text=EXISTING)
-    make_wav(d / "b.wav")
+    make_wav(d / "night1" / "a.wav", seconds=0.5 * te, guano_text=EXISTING)   # a slowed file is te times longer
+    make_wav(d / "b.wav", seconds=0.5 * te)
     a = str(Path("night1") / "a.wav")
     s = survey_with(d, [
         {"file": a, "start": 0.05, "end": 0.30, "label": "Rhinolophus hipposideros", "calls": CALLS},
@@ -246,7 +246,31 @@ def test_whombat_same_ids_every_time_and_time_expansion():
     assert strip(p1) == strip(p2) and strip(d1) == strip(d2)
     s10, (_, p10) = project_for(te=10)
     rec = p10["data"]["recordings"][0]
-    assert rec["time_expansion"] == 10.0 and rec["samplerate"] == SR * 10 and abs(rec["duration"] - 0.05) < 1e-6
+    assert rec["time_expansion"] == 10.0 and rec["samplerate"] == SR * 10 and abs(rec["duration"] - 0.5) < 1e-6
+    assert len(p10["data"]["clips"]) == 4 and len(p10["data"]["sound_events"]) == 5
+
+
+def test_whombat_leaves_out_what_cannot_be_valid():
+    d = Path(tempfile.mkdtemp())
+    make_wav(d / "a.wav")                                                    # half a second long
+    make_wav(d / "b.wav")
+    late = [{"t_start": 0.19, "duration_ms": 5.0, "f_min_khz": 40.0, "f_max_khz": 60.0, "main_bat": "yes"},
+            {"t_start": 0.01, "duration_ms": 5.0, "f_min_khz": 250.0, "f_max_khz": 260.0, "main_bat": "yes"}]
+    s = survey_with(d, [
+        {"file": "a.wav", "start": 0.1, "end": 0.3, "label": "Myotis myotis", "calls": CALLS[:1]},
+        {"file": "a.wav", "start": 0.4, "end": 0.9, "label": "Myotis myotis", "calls": late},   # runs past the end
+        {"file": "b.wav", "start": 0.7, "end": 0.9, "label": "Myotis myotis", "calls": CALLS[:1]},   # wholly past the end
+    ])
+    p = whombat.build(s)[1]["data"]
+    assert [r["path"] for r in p["recordings"]] == ["a.wav"]                 # a recording with no valid clip is not listed
+    assert [(c["start_time"], c["end_time"]) for c in p["clips"]] == [(0.1, 0.3), (0.4, 0.5)]
+    assert len(p["sound_events"]) == 1                                       # the call past the end and the one above 192 kHz are dropped
+    for c in p["clips"]:
+        assert c["start_time"] < c["end_time"]
+    for e in p["sound_events"]:
+        b = e["geometry"]["coordinates"]
+        assert b[0] < b[2] and b[1] < b[3]
+    assert all(len(x["sound_events"]) <= 1 for x in p["clip_annotations"])
 
 
 def test_export_writes_both_files():

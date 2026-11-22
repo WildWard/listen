@@ -67,6 +67,8 @@ def build(survey) -> tuple[dict, dict]:
             recordings[rel] = rec
         rec = recordings[rel]
         start, end = max(0.0, float(p["start"])), min(float(p["end"]), rec["duration"])
+        if end <= start:   # a pass that lies outside its recording (wrong time-expansion setting): nothing valid to write
+            continue
         clip = {"uuid": _id(name, "clip", posix, p["start"]), "recording": rec["uuid"],
                 "start_time": round(start, 6), "end_time": round(end, 6)}
         clips.append(clip)
@@ -77,6 +79,8 @@ def build(survey) -> tuple[dict, dict]:
             t1 = t0 + float(c["duration_ms"]) / 1000
             box = [round(max(0.0, t0 - PAD_S), 6), max(0.0, float(c["f_min_khz"]) * 1000 - PAD_HZ),
                    round(min(rec["duration"], t1 + PAD_S), 6), min(rec["samplerate"] / 2, float(c["f_max_khz"]) * 1000 + PAD_HZ)]
+            if box[2] <= box[0] or box[3] <= box[1]:   # past the end of the file or above what the file can hold
+                continue
             ev = {"uuid": _id(name, "event", posix, p["start"], n), "recording": rec["uuid"],
                   "geometry": {"type": "BoundingBox", "coordinates": box}}
             events.append(ev)
@@ -96,7 +100,8 @@ def build(survey) -> tuple[dict, dict]:
                       "status_badges": [{"state": "completed"}] if p["label"] else []})
 
     tag_list = [{"id": i, "key": k, "value": v} for (k, v), i in sorted(tags.items(), key=lambda kv: kv[1])]
-    recs = list(recordings.values())
+    used = {c["recording"] for c in clips}
+    recs = [r for r in recordings.values() if r["uuid"] in used]
     made = f"Made by WildWard Listen {__version__} from the survey folder '{name}'."
     dataset = {"version": AOEF_VERSION, "created_on": now,
                "data": {"collection_type": "dataset", "uuid": _id(name, "dataset"), "name": name,
